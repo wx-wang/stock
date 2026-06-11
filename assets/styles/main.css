@@ -616,6 +616,9 @@ a:hover { color: var(--color-accent-hover); }
 
   /* Scrollbar thinner */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
+
+  /* Sector rotation cards */
+  .sector-tag { font-size: 10px; padding: 3px 7px; }
 }
 
 /* ===== Bottom Tab Bar (mobile) ===== */

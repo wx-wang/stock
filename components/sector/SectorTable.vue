@@ -17,11 +17,12 @@
     </div>
 
     <div class="sector-table-wrap">
+      <div style="overflow-x:auto;">
       <table class="sector-table">
         <thead>
           <tr>
             <th class="name-col">行业名称</th>
-            <th class="code-col">代码</th>
+            <th class="code-col hide-mobile">代码</th>
             <th class="num-col" @click="setSort('rps')">
               RPS
               <span v-if="sortKey === 'rps'" class="sort-indicator">{{ sortDesc ? '↓' : '↑' }}</span>
@@ -46,11 +47,11 @@
               R²
               <span v-if="sortKey === 'rSquared'" class="sort-indicator">{{ sortDesc ? '↓' : '↑' }}</span>
             </th>
-            <th class="num-col" @click="setSort('tValue')">
+            <th class="num-col hide-mobile" @click="setSort('tValue')">
               t值
               <span v-if="sortKey === 'tValue'" class="sort-indicator">{{ sortDesc ? '↓' : '↑' }}</span>
             </th>
-            <th class="num-col" @click="setSort('annualVol')">
+            <th class="num-col hide-mobile" @click="setSort('annualVol')">
               年化波动
               <span v-if="sortKey === 'annualVol'" class="sort-indicator">{{ sortDesc ? '↓' : '↑' }}</span>
             </th>
@@ -72,7 +73,7 @@
                 {{ s.name }} <span class="expand-icon">↗</span>
               </span>
             </td>
-            <td class="code-col">{{ s.ts_code }}</td>
+            <td class="code-col hide-mobile">{{ s.ts_code }}</td>
             <td class="num-col" :class="getRpsClass(s.rps)">
               {{ s.rps ?? '-' }}
             </td>
@@ -95,10 +96,10 @@
             <td class="num-col">
               {{ (s.rSquared * 100).toFixed(1) }}%
             </td>
-            <td class="num-col" :class="s.significant ? 'significant' : ''">
+            <td class="num-col hide-mobile" :class="s.significant ? 'significant' : ''">
               {{ s.tValue.toFixed(2) }}
             </td>
-            <td class="num-col">
+            <td class="num-col hide-mobile">
               {{ s.annualVol ? (s.annualVol * 100).toFixed(2) + '%' : '-' }}
             </td>
             <td class="num-col" :class="getSharpeClass(s.sharpe)">
@@ -110,6 +111,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <div class="sector-table-footer">

@@ -488,4 +488,14 @@ onMounted(() => {
   color: var(--text-secondary);
   font-style: italic;
 }
+
+@media (max-width: 768px) {
+  .strategy-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .strategy-card {
+    padding: 12px;
+  }
+}
 </style>
