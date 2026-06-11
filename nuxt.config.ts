@@ -13,6 +13,11 @@ export default defineNuxtConfig({
     public: {}
   },
   css: ['~/assets/styles/main.css'],
+  vite: {
+    server: {
+      allowedHosts: ['wx-wang.top', '.wx-wang.top'],
+    },
+  },
   app: {
     head: {
       title: '股票分析看板',
