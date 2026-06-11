@@ -6,7 +6,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 
 // ★ 持久化目录——与项目代码分离，任何代码操作不会触碰此文件
-const PERSIST_DIR = path.resolve('/sessions/6a1d476cb705a1c7ea935295/persist')
+import { PERSIST_DIR } from '../../config'
 const DATA_FILE = path.join(PERSIST_DIR, 'holdings.json')
 
 export default defineEventHandler(async () => {

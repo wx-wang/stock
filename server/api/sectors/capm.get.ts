@@ -11,7 +11,7 @@ import { getSwDailyBatch, getIndexDaily, getIndexClassify } from '@/server/lib/t
 import { promises as fs } from 'fs'
 import path from 'path'
 
-const PERSIST_DIR = path.resolve('/sessions/6a1d476cb705a1c7ea935295/persist')
+import { PERSIST_DIR } from '../../config'
 
 function formatDate(d: Date) {
   const y = d.getFullYear()

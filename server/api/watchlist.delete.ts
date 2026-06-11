@@ -4,7 +4,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 
-const PERSIST_DIR = path.resolve('/sessions/6a1d476cb705a1c7ea935295/persist')
+import { PERSIST_DIR } from '../../config'
 const DATA_FILE = path.join(PERSIST_DIR, 'watchlist.json')
 
 export default defineEventHandler(async (event) => {
