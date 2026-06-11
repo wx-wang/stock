@@ -30,9 +30,9 @@ html.light-theme {
   --bg-primary: #F5F6FA;
   --bg-card: #FFFFFF;
   --bg-card-hover: #F8F9FC;
-  --bg-sidebar: #1A1D27;
+  --bg-sidebar: #EAEDF2;
   --bg-input: #F0F2F5;
-  --border-color: #E4E7ED;
+  --border-color: #DCE0E6;
   --border-light: #EBEEF5;
   --text-primary: #303133;
   --text-secondary: #909399;
@@ -40,6 +40,10 @@ html.light-theme {
   --shadow-card: 0 2px 8px rgba(0,0,0,0.06);
   --shadow-hover: 0 4px 16px rgba(0,0,0,0.1);
 }
+
+/* Light theme sidebar hover — black tint instead of white */
+html.light-theme .nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text-primary); }
+html.light-theme .bottom-tabs { border-top-color: #DCE0E6; }
 
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
