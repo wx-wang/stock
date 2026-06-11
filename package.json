@@ -1,0 +1,22 @@
+{
+  "name": "stock-dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
+  },
+  "dependencies": {
+    "nuxt": "3.13.2",
+    "pinia": "^2.1.7",
+    "@pinia/nuxt": "^0.5.1",
+    "vue-echarts": "^7.0.3",
+    "echarts": "^5.5.0",
+    "resize-detector": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0"
+  }
+}
