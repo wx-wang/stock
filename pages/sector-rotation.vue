@@ -129,6 +129,9 @@
       </div>
     </div>
 
+    <!-- 行业掘金：个股推荐 -->
+    <SectorPicks />
+
     <!-- 行业趋势弹窗 -->
     <SectorTrendPopup
       v-if="trendIndexCode"

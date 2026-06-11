@@ -176,6 +176,12 @@ export function getBrokerRecommend(month: string): Promise<any[]> {
   return callTushare('broker_recommend', { month }, 'month,broker,ts_code,name', { ttl: 60 * 60 * 1000 })
 }
 
+/** 指数成分股（index_member） */
+export function getIndexMember(indexCode: string): Promise<any[]> {
+  return callTushare('index_member', { index_code: indexCode },
+    'index_code,con_code,is_new', { ttl: 24 * 3600 * 1000 })
+}
+
 // 财报（暂保留，供后续使用）
 export function getIncome(tsCode: string, startDate: string, endDate: string): Promise<any[]> {
   return callTushare('income', { ts_code: tsCode, start_date: startDate, end_date: endDate },
