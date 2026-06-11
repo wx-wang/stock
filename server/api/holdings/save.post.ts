@@ -5,7 +5,7 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 
-import { PERSIST_DIR } from '../config'
+import { PERSIST_DIR } from '../../config'
 const DATA_FILE = path.join(PERSIST_DIR, 'holdings.json')
 
 export default defineEventHandler(async (event) => {
