@@ -18,4 +18,5 @@ export {
   getIndexClassify,
   getSwDaily,
   getSwDailyBatch,
+  getBrokerRecommend,
 } from '../adapters/tushare'

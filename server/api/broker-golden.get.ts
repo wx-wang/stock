@@ -2,8 +2,9 @@
  * GET /api/broker-golden — 券商月度金股（近12个月）
  *   ?month=202606 — 返回该月股票+价格（批量拉取）
  * 缓存: persist/broker-golden.json
+ * 缓存不存在时自动从 Tushare broker_recommend 拉取并构建
  */
-import { getDailyBatch } from '@/server/lib/tushare'
+import { getDailyBatch, getBrokerRecommend } from '@/server/lib/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 
@@ -22,18 +23,84 @@ function findMonthStartPrice(items: any[], year: number, month: number): number 
   return earliest ? (Number(earliest.close) || 0) : 0
 }
 
+/** 生成最近 N 个月的 YYYYMM 列表 */
+function lastNMonths(n: number): string[] {
+  const result: string[] = []
+  const now = new Date()
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    result.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  return result
+}
+
+function monthLabel(m: string): string {
+  return `${m.slice(0, 4)}年${m.slice(4, 6)}月`
+}
+
+/** 从 Tushare 拉取近12个月券商金股，构建缓存 */
+async function buildGoldenCache(): Promise<any[]> {
+  const months = lastNMonths(12)
+  const result: any[] = []
+
+  for (const month of months) {
+    try {
+      const rows = await getBrokerRecommend(month)
+      if (!rows.length) {
+        console.warn(`[broker-golden] month ${month} returned empty`)
+        continue
+      }
+
+      // 按股票聚合推荐次数
+      const countMap = new Map<string, { name: string; count: number }>()
+      for (const r of rows) {
+        const code = r.ts_code
+        if (!countMap.has(code)) countMap.set(code, { name: r.name, count: 0 })
+        countMap.get(code)!.count++
+      }
+
+      const stocks = Array.from(countMap.entries())
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([ts_code, v]) => ({
+          name: v.name, ts_code, count: v.count,
+          startPrice: 0, latestPrice: 0, changePct: 0,
+        }))
+
+      console.log(`[broker-golden] ${month}: ${stocks.length} stocks`)
+      result.push({ month, monthLabel: monthLabel(month), stocks })
+    } catch (e: any) {
+      console.error(`[broker-golden] failed to fetch month ${month}:`, e.message)
+    }
+  }
+
+  return result.sort((a, b) => String(b.month).localeCompare(String(a.month)))
+}
+
 export default defineEventHandler(async (event) => {
   try {
     await fs.mkdir(PERSIST_DIR, { recursive: true })
     const q = getQuery(event)
     const targetMonth = (q.month as string) || ''
+    const force = q.force === 'true'
 
-    // ── 读缓存 ──
+    // ── 读缓存（force 时跳过） ──
     let cacheData: any[] = []
-    try {
-      const raw = await fs.readFile(CACHE_FILE, 'utf-8')
-      cacheData = JSON.parse(raw).data || []
-    } catch { return { success: false, error: '缓存不存在，请先运行数据预加载脚本' } }
+    if (!force) {
+      try {
+        const raw = await fs.readFile(CACHE_FILE, 'utf-8')
+        cacheData = JSON.parse(raw).data || []
+      } catch { /* cache missing → build below */ }
+    }
+
+    // ── 缓存不存在 → 自动拉取构建 ──
+    if (!cacheData.length) {
+      console.log('[broker-golden] cache missing, building from Tushare...')
+      cacheData = await buildGoldenCache()
+      await fs.writeFile(CACHE_FILE, JSON.stringify({ data: cacheData, updatedAt: new Date().toISOString() }, null, 2))
+      console.log(`[broker-golden] cache built: ${cacheData.length} months`)
+    }
+
+    if (!cacheData.length) return { success: true, data: [], message: '暂无券商金股数据（Tushare无返回）' }
 
     // ── 模式1：返回全部月份列表（不含价格） ──
     if (!targetMonth) {

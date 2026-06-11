@@ -171,6 +171,11 @@ function fmtDate8(d: Date): string {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** 券商月度金股（broker_recommend） */
+export function getBrokerRecommend(month: string): Promise<any[]> {
+  return callTushare('broker_recommend', { month }, 'month,broker,ts_code,name', { ttl: 60 * 60 * 1000 })
+}
+
 // 财报（暂保留，供后续使用）
 export function getIncome(tsCode: string, startDate: string, endDate: string): Promise<any[]> {
   return callTushare('income', { ts_code: tsCode, start_date: startDate, end_date: endDate },
