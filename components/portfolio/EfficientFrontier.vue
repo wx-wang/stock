@@ -40,6 +40,7 @@
     <!-- 再平衡建议 -->
     <div class="ef-rebalance" v-if="data && currentPos">
       <h4>📋 再平衡建议（当前 → 最大 Sharpe）</h4>
+      <div style="overflow-x:auto;">
       <table class="rebalance-table">
         <thead>
           <tr>
@@ -47,7 +48,7 @@
             <th class="num">当前权重</th>
             <th class="num">最优权重</th>
             <th class="num">差异</th>
-            <th class="num">当前市值</th>
+            <th class="num hide-mobile">当前市值</th>
             <th>操作建议</th>
           </tr>
         </thead>
@@ -60,11 +61,12 @@
             <td class="num" :style="{ color: r.diff > 0.01 ? 'var(--color-up)' : r.diff < -0.01 ? 'var(--color-down)' : 'var(--text-secondary)' }">
               {{ r.diff > 0 ? '+' : '' }}{{ (r.diff * 100).toFixed(1) }}%
             </td>
-            <td class="num">{{ formatMoney(r.mv) }}</td>
+            <td class="num hide-mobile">{{ formatMoney(r.mv) }}</td>
             <td>{{ r.action }}</td>
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </template>

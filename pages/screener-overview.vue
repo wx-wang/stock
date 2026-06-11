@@ -61,12 +61,12 @@
               <th style="padding:5px 8px;text-align:left;">代码</th><th style="padding:5px 8px;text-align:left;">名称</th>
               <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('close')">股价{{sortIcon('close')}}</th>
               <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('peTtm')">PE_TTM{{sortIcon('peTtm')}}</th>
-              <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('staticPe')">静态PE{{sortIcon('staticPe')}}</th>
+              <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('staticPe')">静态PE{{sortIcon('staticPe')}}</th>
               <th style="padding:5px 8px;text-align:center;cursor:pointer;user-select:none;" @click="toggleSort('growthCeiling')">天花板{{sortIcon('growthCeiling')}}</th>
               <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('estimatedPe')">预估PE{{sortIcon('estimatedPe')}}</th>
               <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('ceilingEps')">天花板EPS{{sortIcon('ceilingEps')}}</th>
               <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('terminalEps')">终局EPS{{sortIcon('terminalEps')}}</th>
-              <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('terminalPe')">终局PE{{sortIcon('terminalPe')}}</th>
+              <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('terminalPe')">终局PE{{sortIcon('terminalPe')}}</th>
               <th class="hide-mobile" style="padding:5px 8px;text-align:center;cursor:pointer;user-select:none;" @click="toggleSort('peg')">PEG{{sortIcon('peg')}}</th>
               <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('totalMv')">市值{{sortIcon('totalMv')}}</th>
               <th class="hide-mobile" style="padding:5px 8px;text-align:center;">研报</th>
@@ -89,7 +89,7 @@
               <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;"><div>{{ getEstPe(s)>0?getEstPe(s).toFixed(1):'--' }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:(getEstPe(s)>0&&(s.peTtm||0)>0&&getEstPe(s)/(s.peTtm||1)<1)?'#22AB94':'#E15241'}">{{ (getEstPe(s)>0&&(s.peTtm||0)>0)?((getEstPe(s)/(s.peTtm||0)-1)*100).toFixed(0)+'%':'--' }}</div></td>
               <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getCeilingEps(s)>0?getCeilingEps(s).toFixed(2):'--' }}</td>
               <td style="padding:5px 8px;text-align:right;font-family:monospace;cursor:pointer;color:#22AB94;" @click.stop="openTerminal(s)">{{ getTermEps(s)>0?getTermEps(s).toFixed(2):'--' }}</td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getTermPe(s)>0?getTermPe(s).toFixed(1):'--' }}</td>
+              <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getTermPe(s)>0?getTermPe(s).toFixed(1):'--' }}</td>
               <td class="hide-mobile" style="padding:5px 8px;text-align:center;font-family:monospace;">{{ s.peg>0?s.peg.toFixed(2):'--' }}</td>
               <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;">{{ s.totalMv>0?s.totalMv.toFixed(1):'--' }}</td>
               <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><span :style="{color:s.reports>=30?'#22AB94':s.reports>=15?'#3370FF':'#8B8FA3'}">{{ s.reports }}</span></td>

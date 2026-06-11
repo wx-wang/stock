@@ -75,20 +75,21 @@
     <!-- 个股表格 -->
     <div class="capm-table-wrap" v-if="data && data.stocks">
       <h4>📊 个股 CAPM 分析</h4>
+      <div style="overflow-x:auto;">
       <table class="capm-table">
         <thead>
           <tr>
             <th>股票</th>
             <th class="num">β</th>
             <th class="num">α (年化)</th>
-            <th class="num">非系统风险(年化)</th>
-            <th class="num">系统风险(年化)</th>
-            <th class="num">总风险(年化)</th>
+            <th class="num">非系统风险</th>
+            <th class="num">系统风险</th>
+            <th class="num">总风险</th>
             <th class="num">R²</th>
-            <th class="num">t值</th>
+            <th class="num hide-mobile">t值</th>
             <th class="num">夏普</th>
-            <th class="num">特雷诺</th>
-            <th class="num">IR</th>
+            <th class="num hide-mobile">特雷诺</th>
+            <th class="num hide-mobile">IR</th>
             <th>结论</th>
           </tr>
         </thead>
@@ -108,14 +109,15 @@
             <td class="num">{{ (s.systematicRiskAnnual * 100).toFixed(2) }}%</td>
             <td class="num">{{ (s.totalRiskAnnual * 100).toFixed(2) }}%</td>
             <td class="num">{{ (s.rSquared * 100).toFixed(1) }}%</td>
-            <td class="num" :class="s.significant ? 'bold' : ''">{{ s.tValue.toFixed(2) }}</td>
+            <td class="num hide-mobile" :class="s.significant ? 'bold' : ''">{{ s.tValue.toFixed(2) }}</td>
             <td class="num" :class="s.sharpe > 1 ? 'positive' : s.sharpe > 0 ? '' : 'negative'">{{ s.sharpe.toFixed(2) }}</td>
-            <td class="num" :class="s.treynor > 0.2 ? 'positive' : s.treynor > 0 ? '' : 'negative'">{{ s.treynor.toFixed(4) }}</td>
-            <td class="num" :class="s.ir > 0.5 ? 'positive' : s.ir > 0 ? '' : 'negative'">{{ s.ir.toFixed(2) }}</td>
+            <td class="num hide-mobile" :class="s.treynor > 0.2 ? 'positive' : s.treynor > 0 ? '' : 'negative'">{{ s.treynor.toFixed(4) }}</td>
+            <td class="num hide-mobile" :class="s.ir > 0.5 ? 'positive' : s.ir > 0 ? '' : 'negative'">{{ s.ir.toFixed(2) }}</td>
             <td class="conclusion-cell">{{ s.conclusion }}</td>
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </template>
