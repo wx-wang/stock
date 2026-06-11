@@ -62,6 +62,30 @@
         <NuxtPage />
       </div>
     </div>
+
+    <!-- Bottom Tab Bar (mobile ≤768px) -->
+    <nav class="bottom-tabs">
+      <NuxtLink to="/screener-overview" class="tab-item" :class="{ active: uiStore.activeNav === 'screener' }" @click="uiStore.setActiveNav('screener')">
+        <span class="tab-icon">📋</span>
+        <span class="tab-label">一览</span>
+      </NuxtLink>
+      <NuxtLink to="/watchlist" class="tab-item" :class="{ active: uiStore.activeNav === 'watchlist' }" @click="uiStore.setActiveNav('watchlist')">
+        <span class="tab-icon">⭐</span>
+        <span class="tab-label">自选</span>
+      </NuxtLink>
+      <NuxtLink to="/" class="tab-item" :class="{ active: uiStore.activeNav === 'portfolio' }" @click="uiStore.setActiveNav('portfolio')">
+        <span class="tab-icon">💼</span>
+        <span class="tab-label">持仓</span>
+      </NuxtLink>
+      <NuxtLink to="/sector-rotation" class="tab-item" :class="{ active: uiStore.activeNav === 'sector' }" @click="uiStore.setActiveNav('sector')">
+        <span class="tab-icon">🔄</span>
+        <span class="tab-label">行业</span>
+      </NuxtLink>
+      <NuxtLink to="/broker-golden" class="tab-item" :class="{ active: uiStore.activeNav === 'broker-golden' }" @click="uiStore.setActiveNav('broker-golden')">
+        <span class="tab-icon">🏦</span>
+        <span class="tab-label">金股</span>
+      </NuxtLink>
+    </nav>
   </div>
 </template>
 

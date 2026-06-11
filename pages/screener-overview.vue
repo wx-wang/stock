@@ -7,7 +7,7 @@
         <span v-if="marketPE" style="font-size:12px;color:#fff;background:#3370FF;padding:2px 8px;border-radius:4px;">全A PE{{ marketPE }} | r={{ discountRate }}%</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <input v-model="searchText" style="background:#1E2130;border:1px solid #2A2E39;border-radius:6px;color:#E4E7ED;padding:0 10px;height:32px;width:200px;" placeholder="🔍 搜索代码或名称..." />
+        <input v-model="searchText" class="search-input" style="background:#1E2130;border:1px solid #2A2E39;border-radius:6px;color:#E4E7ED;padding:0 10px;height:32px;width:200px;" placeholder="🔍 搜索代码或名称..." />
         <button :disabled="loading" @click="refreshAll()" style="background:#3370FF;color:#fff;border:none;border-radius:6px;padding:0 12px;height:32px;font-size:12px;cursor:pointer;">
           {{ loading ? '⏳ 更新中...' : '🔄 更新数据' }}
         </button>
@@ -16,7 +16,7 @@
 
     <div v-if="error" style="padding:12px;background:rgba(225,82,65,0.08);border:1px solid rgba(225,82,65,0.2);border-radius:6px;margin-bottom:12px;color:#E15241;">{{ error }}</div>
 
-    <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 12px;background:#1A1D27;border:1px solid #2A2E39;border-radius:6px;">
+    <div class="filter-bar" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 12px;background:#1A1D27;border:1px solid #2A2E39;border-radius:6px;">
       <span style="font-size:13px;color:#8B8FA3;cursor:pointer;user-select:none;" @click="showFilters=!showFilters">🔽 高级筛选</span>
       <template v-if="showFilters">
         <span style="font-size:12px;color:#8B8FA3;">PEG</span>
@@ -61,20 +61,20 @@
               <th style="padding:5px 8px;text-align:left;">代码</th><th style="padding:5px 8px;text-align:left;">名称</th>
               <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('close')">股价{{sortIcon('close')}}</th>
               <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('peTtm')">PE_TTM{{sortIcon('peTtm')}}</th>
-              <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('staticPe')">静态PE{{sortIcon('staticPe')}}</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('staticPe')">静态PE{{sortIcon('staticPe')}}</th>
               <th style="padding:5px 8px;text-align:center;cursor:pointer;user-select:none;" @click="toggleSort('growthCeiling')">天花板{{sortIcon('growthCeiling')}}</th>
-              <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('estimatedPe')">预估PE{{sortIcon('estimatedPe')}}</th>
-              <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('ceilingEps')">天花板EPS{{sortIcon('ceilingEps')}}</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('estimatedPe')">预估PE{{sortIcon('estimatedPe')}}</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('ceilingEps')">天花板EPS{{sortIcon('ceilingEps')}}</th>
               <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('terminalEps')">终局EPS{{sortIcon('terminalEps')}}</th>
-              <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('terminalPe')">终局PE{{sortIcon('terminalPe')}}</th>
-              <th style="padding:5px 8px;text-align:center;cursor:pointer;user-select:none;" @click="toggleSort('peg')">PEG{{sortIcon('peg')}}</th>
-              <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('totalMv')">市值{{sortIcon('totalMv')}}</th>
-              <th style="padding:5px 8px;text-align:center;">研报</th>
-              <th style="padding:5px 8px;text-align:center;">{{ yearLabel(g,2) }}</th><th style="padding:5px 8px;text-align:center;">{{ yearLabel(g,3) }}</th><th style="padding:5px 8px;text-align:center;">{{ yearLabel(g,4) }}</th>
-              <th style="padding:5px 8px;text-align:center;">评级</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('terminalPe')">终局PE{{sortIcon('terminalPe')}}</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:center;cursor:pointer;user-select:none;" @click="toggleSort('peg')">PEG{{sortIcon('peg')}}</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('totalMv')">市值{{sortIcon('totalMv')}}</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:center;">研报</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:center;">{{ yearLabel(g,2) }}</th><th class="hide-mobile" style="padding:5px 8px;text-align:center;">{{ yearLabel(g,3) }}</th><th class="hide-mobile" style="padding:5px 8px;text-align:center;">{{ yearLabel(g,4) }}</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:center;">评级</th>
               <th style="padding:5px 8px;text-align:center;">🏅金股</th>
-              <th style="padding:5px 8px;text-align:center;">目标价/空间</th>
-              <th style="padding:5px 8px;text-align:center;">估值/空间</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:center;">目标价/空间</th>
+              <th class="hide-mobile" style="padding:5px 8px;text-align:center;">估值/空间</th>
             </tr>
           </thead>
           <tbody>
@@ -86,20 +86,20 @@
               <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ s.peTtm>0?s.peTtm.toFixed(1):'--' }}</td>
               <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ (s.staticPe||0)>0?(s.staticPe||0).toFixed(1):'--' }}</td>
               <td style="padding:5px 8px;text-align:center;font-family:monospace;cursor:pointer;color:#3370FF;text-decoration:underline;" @click.stop="openCeiling(s)">{{ getCeiling(s)>0?getCeiling(s).toFixed(2)+'x':'--' }}</td>
-              <td style="padding:5px 8px;text-align:right;font-family:monospace;"><div>{{ getEstPe(s)>0?getEstPe(s).toFixed(1):'--' }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:(getEstPe(s)>0&&(s.peTtm||0)>0&&getEstPe(s)/(s.peTtm||1)<1)?'#22AB94':'#E15241'}">{{ (getEstPe(s)>0&&(s.peTtm||0)>0)?((getEstPe(s)/(s.peTtm||0)-1)*100).toFixed(0)+'%':'--' }}</div></td>
-              <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getCeilingEps(s)>0?getCeilingEps(s).toFixed(2):'--' }}</td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;"><div>{{ getEstPe(s)>0?getEstPe(s).toFixed(1):'--' }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:(getEstPe(s)>0&&(s.peTtm||0)>0&&getEstPe(s)/(s.peTtm||1)<1)?'#22AB94':'#E15241'}">{{ (getEstPe(s)>0&&(s.peTtm||0)>0)?((getEstPe(s)/(s.peTtm||0)-1)*100).toFixed(0)+'%':'--' }}</div></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getCeilingEps(s)>0?getCeilingEps(s).toFixed(2):'--' }}</td>
               <td style="padding:5px 8px;text-align:right;font-family:monospace;cursor:pointer;color:#22AB94;" @click.stop="openTerminal(s)">{{ getTermEps(s)>0?getTermEps(s).toFixed(2):'--' }}</td>
-              <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getTermPe(s)>0?getTermPe(s).toFixed(1):'--' }}</td>
-              <td style="padding:5px 8px;text-align:center;font-family:monospace;">{{ s.peg>0?s.peg.toFixed(2):'--' }}</td>
-              <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ s.totalMv>0?s.totalMv.toFixed(1):'--' }}</td>
-              <td style="padding:5px 8px;text-align:center;"><span :style="{color:s.reports>=30?'#22AB94':s.reports>=15?'#3370FF':'#8B8FA3'}">{{ s.reports }}</span></td>
-              <td style="padding:5px 8px;text-align:center;"><template v-if="s.fy2Eps"><div style="font-family:monospace;">{{ s.fy2Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy2Growth>0?'#E15241':'#22AB94'}">{{ (s.fy2Growth>0?'+':'')+s.fy2Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
-              <td style="padding:5px 8px;text-align:center;"><template v-if="s.fy3Eps"><div style="font-family:monospace;">{{ s.fy3Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy3Growth>0?'#E15241':'#22AB94'}">{{ (s.fy3Growth>0?'+':'')+s.fy3Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
-              <td style="padding:5px 8px;text-align:center;"><template v-if="s.fy4Eps"><div style="font-family:monospace;">{{ s.fy4Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy4Growth>0?'#E15241':'#22AB94'}">{{ (s.fy4Growth>0?'+':'')+s.fy4Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
-              <td style="padding:5px 8px;text-align:center;"><span v-if="s.buyRating" style="color:#E15241;font-weight:600;">{{ s.buyRating }}B</span><span v-if="s.addRating" style="color:#8B8FA3;"> / {{ s.addRating }}A</span><span v-if="!s.buyRating&&!s.addRating" style="color:#8B8FA3;">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getTermPe(s)>0?getTermPe(s).toFixed(1):'--' }}</td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;font-family:monospace;">{{ s.peg>0?s.peg.toFixed(2):'--' }}</td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;">{{ s.totalMv>0?s.totalMv.toFixed(1):'--' }}</td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><span :style="{color:s.reports>=30?'#22AB94':s.reports>=15?'#3370FF':'#8B8FA3'}">{{ s.reports }}</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy2Eps"><div style="font-family:monospace;">{{ s.fy2Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy2Growth>0?'#E15241':'#22AB94'}">{{ (s.fy2Growth>0?'+':'')+s.fy2Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy3Eps"><div style="font-family:monospace;">{{ s.fy3Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy3Growth>0?'#E15241':'#22AB94'}">{{ (s.fy3Growth>0?'+':'')+s.fy3Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy4Eps"><div style="font-family:monospace;">{{ s.fy4Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy4Growth>0?'#E15241':'#22AB94'}">{{ (s.fy4Growth>0?'+':'')+s.fy4Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><span v-if="s.buyRating" style="color:#E15241;font-weight:600;">{{ s.buyRating }}B</span><span v-if="s.addRating" style="color:#8B8FA3;"> / {{ s.addRating }}A</span><span v-if="!s.buyRating&&!s.addRating" style="color:#8B8FA3;">--</span></td>
               <td style="padding:5px 8px;text-align:center;"><span v-if="s.isGoldenRecent">⭐</span><span v-if="s.goldenCount12m>0" :style="{color:s.isGoldenRecent?'#22AB94':'#8B8FA3'}">{{ s.goldenCount12m }}/12</span><span v-if="s.goldenCount12m===0" style="color:#8B8FA3;">--</span></td>
-              <td style="padding:5px 8px;text-align:center;"><template v-if="s.targetPrice>0"><div style="font-family:monospace;">{{ s.targetPrice.toFixed(0) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.targetUpside>0?'#E15241':'#22AB94'}">{{ (s.targetUpside>0?'+':'')+s.targetUpside.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
-              <td style="padding:5px 8px;text-align:center;"><template v-if="s.dcfValue>0"><div style="font-family:monospace;">{{ s.dcfValue.toFixed(1) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.dcfUpside>0?'#E15241':'#22AB94'}">{{ (s.dcfUpside>0?'+':'')+s.dcfUpside.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.targetPrice>0"><div style="font-family:monospace;">{{ s.targetPrice.toFixed(0) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.targetUpside>0?'#E15241':'#22AB94'}">{{ (s.targetUpside>0?'+':'')+s.targetUpside.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.dcfValue>0"><div style="font-family:monospace;">{{ s.dcfValue.toFixed(1) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.dcfUpside>0?'#E15241':'#22AB94'}">{{ (s.dcfUpside>0?'+':'')+s.dcfUpside.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
             </tr>
           </tbody>
         </table>
@@ -108,7 +108,7 @@
 
     <!-- 天花板弹窗 -->
     <div v-if="ceilingStock" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;" @click="ceilingStock=null">
-      <div @click.stop style="background:#1A1D27;border:1px solid #2A2E39;border-radius:8px;padding:20px 24px;max-width:420px;width:90%;">
+      <div @click.stop class="mobile-modal" style="background:#1A1D27;border:1px solid #2A2E39;border-radius:8px;padding:20px 24px;max-width:420px;width:90%;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <span style="font-size:16px;font-weight:700;color:#E4E7ED;">{{ ceilingStock.name }} ({{ ceilingStock.code }})</span>
           <span style="cursor:pointer;color:#8B8FA3;font-size:20px;" @click="ceilingStock=null">✕</span>
@@ -158,7 +158,7 @@
     </div>
     <!-- 终局EPS弹窗 -->
     <div v-if="terminalStock" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;" @click="terminalStock=null">
-      <div @click.stop style="background:#1A1D27;border:1px solid #2A2E39;border-radius:8px;padding:20px 24px;max-width:760px;width:95%;max-height:90vh;overflow-y:auto;">
+      <div @click.stop class="mobile-modal" style="background:#1A1D27;border:1px solid #2A2E39;border-radius:8px;padding:20px 24px;max-width:760px;width:95%;max-height:90vh;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <span style="font-size:16px;font-weight:700;color:#E4E7ED;">{{ terminalStock.name }} ({{ terminalStock.code }}) — 终局EPS</span>
           <span style="cursor:pointer;color:#8B8FA3;font-size:20px;" @click="terminalStock=null">✕</span>
