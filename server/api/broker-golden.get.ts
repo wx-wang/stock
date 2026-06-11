@@ -7,7 +7,7 @@ import { getDailyBatch } from '@/server/lib/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 
-import { PERSIST_DIR } from '../../config'
+import { PERSIST_DIR } from '../config'
 const CACHE_FILE = path.join(PERSIST_DIR, 'broker-golden.json')
 
 function fmtDate8(d: Date) { const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), d2 = String(d.getDate()).padStart(2, '0'); return `${y}${m}${d2}` }

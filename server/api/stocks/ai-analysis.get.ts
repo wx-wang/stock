@@ -4,7 +4,7 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 
-import { PERSIST_DIR } from '../../config'
+import { PERSIST_DIR } from '../config'
 
 export default defineEventHandler(async (event) => {
   const q = getQuery(event)
