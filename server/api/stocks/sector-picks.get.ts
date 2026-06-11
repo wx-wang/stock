@@ -268,9 +268,21 @@ function buildScore(st: any, sector: SectorData): StockScore {
   const scoreMomentum = Math.min(1, (alphaNorm / 0.3) * 0.5 + Math.min(1, momNorm / 0.5) * 0.5)
 
   // Factor 2: Valuation upside (25%) — DCF + target price
+  //   两者都有 → 60% DCF + 40% 目标价
+  //   只有目标价 → 100% 目标价
+  //   都缺失 → 0
   const dcfUp = st.dcfUpside || 0
   const tgtUp = st.targetUpside || 0
-  const scoreValuation = Math.min(1, Math.max(0, dcfUp / 50) * 0.6 + Math.max(0, tgtUp / 50) * 0.4)
+  let scoreValuation: number
+  if (dcfUp > 0 && tgtUp > 0) {
+    scoreValuation = Math.min(1, Math.max(0, dcfUp / 50) * 0.6 + Math.max(0, tgtUp / 50) * 0.4)
+  } else if (tgtUp > 0) {
+    scoreValuation = Math.min(1, Math.max(0, tgtUp / 50))  // 只靠目标价
+  } else if (dcfUp > 0) {
+    scoreValuation = Math.min(1, Math.max(0, dcfUp / 50))
+  } else {
+    scoreValuation = 0
+  }
 
   // Factor 3: Analyst consensus (20%) — golden stocks + buy rating
   const goldScore = Math.min(1, (st.goldenCount12m || 0) / 6)
@@ -278,10 +290,18 @@ function buildScore(st: any, sector: SectorData): StockScore {
   const scoreConsensus = goldScore * 0.5 + buyScore * 0.3 + (st.isGoldenRecent ? 0.2 : 0)
 
   // Factor 4: Growth quality (15%) — FY2 growth + PEG
+  //   两者都有 → 60% 增长率 + 40% PEG
+  //   缺少PEG → 100% 增长率
   const growth = Math.max(-30, st.fy2Growth || 0)
-  const growthScore = Math.min(1, growth / 30)
-  const pegScore = st.peg > 0 ? Math.min(1, 1 / st.peg) : 0.5
-  const scoreGrowth = growthScore * 0.6 + pegScore * 0.4
+  const growthComponent = Math.min(1, growth / 30)
+  const peg = st.peg || 0
+  let scoreGrowth: number
+  if (peg > 0) {
+    const pegComponent = Math.min(1, 1 / peg)
+    scoreGrowth = growthComponent * 0.6 + pegComponent * 0.4
+  } else {
+    scoreGrowth = growthComponent  // 没有PEG就全靠增长率
+  }
 
   // Factor 5: Sector fit (15%) — beta matching
   // Q1 (beta≤1): lower beta = better fit
