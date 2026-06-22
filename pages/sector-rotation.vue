@@ -64,6 +64,9 @@
       :error="error"
     />
 
+    <!-- 大盘拥挤度温度计 -->
+    <MarketCrowdingGauge />
+
     <!-- 数据表格 -->
     <SectorTable :sectors="data?.sectors || []" @show-trend="showTrend" />
 
