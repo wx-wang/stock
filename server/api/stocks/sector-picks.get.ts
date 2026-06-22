@@ -25,6 +25,7 @@ interface SectorData {
   alphaMomentum: number
   sharpe: number
   cumulativeReturn: number
+  crowdingPct: number
 }
 
 interface StockScore {
@@ -52,7 +53,7 @@ interface StockScore {
   scoreValuation: number   // 25%
   scoreConsensus: number   // 20%
   scoreGrowth: number      // 15%
-  scoreFit: number         // 15%
+  scoreCrowding: number    // 15% — 拥挤风险（行业不拥挤=高分）
   totalScore: number
 }
 
@@ -201,7 +202,7 @@ export default defineEventHandler(async (event) => {
         ss.scoreValuation * 0.25 +
         ss.scoreConsensus * 0.20 +
         ss.scoreGrowth * 0.15 +
-        ss.scoreFit * 0.15
+        ss.scoreCrowding * 0.15
     }
 
     // 5. Sort and pick top N, with sector diversification (max 3 per sector)
@@ -244,7 +245,7 @@ export default defineEventHandler(async (event) => {
         scoreValuation: Math.round(p.scoreValuation * 100) / 100,
         scoreConsensus: Math.round(p.scoreConsensus * 100) / 100,
         scoreGrowth: Math.round(p.scoreGrowth * 100) / 100,
-        scoreFit: Math.round(p.scoreFit * 100) / 100,
+        scoreCrowding: Math.round(p.scoreCrowding * 100) / 100,
         close: p.close,
         peTtm: p.peTtm,
         dcfUpside: p.dcfUpside,
@@ -313,14 +314,10 @@ function buildScore(st: any, sector: SectorData): StockScore {
     scoreGrowth = growthComponent  // 没有PEG就全靠增长率
   }
 
-  // Factor 5: Sector fit (15%) — beta matching
-  // Q1 (beta≤1): lower beta = better fit
-  // Q2 (beta>1): moderate beta (1~1.5) = better fit
-  const stockPE = st.peTtm
-  const sectorFit = sector.beta <= 1
-    ? Math.max(0, 1 - stockPE / 100)  // Q1: prefer lower PE
-    : Math.min(1, Math.max(0.3, stockPE > 0 ? 30 / stockPE : 0.5))  // Q2: moderate PE
-  const scoreFit = sectorFit
+  // Factor 5: Crowding risk (15%) — 拥挤的行业自动降分
+  //   不拥挤(<50)=满分, 偏热(50-70)=递减, 拥挤(70-80)=低分, 极度拥挤(>80)=0
+  const crowd = sector.crowdingPct || 50
+  const scoreCrowding = crowd < 50 ? 1.0 : crowd < 70 ? Math.max(0, 1 - (crowd - 50) / 40) : crowd < 80 ? Math.max(0.1, (80 - crowd) / 40) : 0
 
   return {
     ts_code: st.code + (st.code.startsWith('6') ? '.SH' : '.SZ'),
@@ -343,7 +340,7 @@ function buildScore(st: any, sector: SectorData): StockScore {
     scoreValuation,
     scoreConsensus,
     scoreGrowth,
-    scoreFit,
+    scoreCrowding,
     totalScore: 0,
   }
 }
