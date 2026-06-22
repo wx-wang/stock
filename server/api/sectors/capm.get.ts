@@ -7,7 +7,7 @@
  * 首次计算后写入文件缓存（当天有效），后续请求秒出
  * 传 force=true 可强制重新计算
  */
-import { getSwDailyBatch, getIndexDaily, getIndexClassify } from '@/server/lib/tushare'
+import { callTushare, getSwDailyBatch, getIndexDaily, getIndexClassify } from '@/server/lib/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 
@@ -20,7 +20,7 @@ function formatDate(d: Date) {
   return `${y}${m}${day}`
 }
 
-const CACHE_VERSION = 'v2'  // 改数据结构时递增，缓存自动失效
+const CACHE_VERSION = 'v3'  // 改数据结构时递增，缓存自动失效
 
 function getCachePath(days: number, indexCode: string): string {
   return path.join(PERSIST_DIR, `sectors-capm-d${days}-${indexCode.replace('.', '_')}-${CACHE_VERSION}.json`)
@@ -193,31 +193,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // ── 5a. 拥挤度计算（成交额占比分位数 + 5日变化）──
-    const dailyTotals = new Map<string, number>()
-    for (const [, items] of batchMap) {
-      for (const item of items) {
-        const td = String(item.trade_date)
-        dailyTotals.set(td, (dailyTotals.get(td) || 0) + (Number(item.amount) || 0))
-      }
-    }
-    for (const r of results) {
-      const items = batchMap.get(r.ts_code)
-      if (!items || items.length < 20) { r.crowdingPct = 0; r.crowdingChange = 0; continue }
-      const shares: number[] = []
-      for (const item of items) {
-        const total = dailyTotals.get(String(item.trade_date)) || 1e9
-        shares.push((Number(item.amount) || 0) / total)
-      }
-      const currentShare = shares[shares.length - 1]
-      const lookback = shares.slice(Math.max(0, shares.length - 251), shares.length - 1)
-      const below = lookback.filter(s => s < currentShare).length
-      const pct = Math.round(below / Math.max(1, lookback.length) * 100)
-      const share5dAgo = shares.length > 6 ? shares[shares.length - 6] : shares[0]
-      const change = Math.round((currentShare - share5dAgo) / Math.max(1e-9, share5dAgo) * 100)
-      r.crowdingPct = Math.min(100, pct)
-      r.crowdingChange = Math.min(200, Math.max(-100, change))
-    }
+    // ── 5a. 拥挤度计算（个股日线按行业汇总成交额占比）──
+    // sw_daily 没有 amount 字段，改用 daily（个股日线）按 screener 中的行业分组
+    await computeCrowding(results, endDate, startDate)
 
     // ─── 5. 计算 RPS ───
     const validForRps = results.filter(r => !r.error && r.tradingDays >= 20)
@@ -248,6 +226,89 @@ export default defineEventHandler(async (event) => {
     return { success: false, error: e.message }
   }
 })
+
+// ============== 拥挤度计算（个股日线按行业汇总） ==============
+
+async function computeCrowding(results: SectorCapmResult[], endDate: string, _startDate: string) {
+  // 1. 加载 screener 缓存，获取 股票代码 → 行业名称 映射
+  const codeToIndustry = new Map<string, string>()
+  try {
+    const scFile = path.join(PERSIST_DIR, 'screener-overview.json')
+    const scRaw = await fs.readFile(scFile, 'utf-8')
+    const scData = JSON.parse(scRaw)
+    for (const g of scData.groups || []) {
+      const stocks = g.displayStocks || g.stocks || []
+      for (const s of stocks) {
+        if (s.code && s.industryName) codeToIndustry.set(s.code, s.industryName)
+      }
+    }
+  } catch { console.warn('[capm] screener cache not found, crowding skipped'); return }
+
+  // 2. 找到最近两个有数据的交易日（今天 + 5 天前）
+  const findDays = async (offset: number): Promise<string | null> => {
+    const ed = new Date(endDate.slice(0,4)+'-'+endDate.slice(4,6)+'-'+endDate.slice(6,8))
+    for (let i = offset; i < offset + 5; i++) {
+      const d = new Date(ed)
+      d.setDate(d.getDate() - i)
+      const ds = formatDate(d)
+      try {
+        const test = await callTushare('daily', { trade_date: ds, limit: 1 }, 'ts_code')
+        if (test.length > 0) return ds
+      } catch { /* skip */ }
+    }
+    return null
+  }
+  const recentDay = await findDays(0)
+  const oldDay = await findDays(5)
+  if (!recentDay) return
+
+  // 3. 拉取某一天的全市场成交额，按行业汇总
+  const getIndustryShares = async (td: string): Promise<Map<string, number>> => {
+    const result = new Map<string, number>()
+    let totalAmount = 0
+    try {
+      for (let offset = 0; offset < 20000; offset += 6000) {
+        const batch = await callTushare('daily',
+          { trade_date: td, limit: 6000, offset },
+          'ts_code,amount')
+        if (!batch.length) break
+        for (const row of batch) {
+          const code = String(row.ts_code || '').replace(/\.(SZ|SH|BJ)$/, '')
+          const amount = Number(row.amount) || 0
+          if (!code || amount <= 0) continue
+          const ind = codeToIndustry.get(code) || '其他'
+          result.set(ind, (result.get(ind) || 0) + amount)
+          totalAmount += amount
+        }
+      }
+    } catch (e: any) { console.warn(`[capm] crowding fetch ${td}:`, e.message) }
+    // Normalize to shares
+    if (totalAmount > 0) {
+      for (const [k, v] of result) result.set(k, v / totalAmount)
+    }
+    return result
+  }
+
+  const recentShares = await getIndustryShares(recentDay)
+  const oldShares = oldDay ? await getIndustryShares(oldDay) : null
+
+  // 4. 赋值拥挤度（成交额占比阈值法）和变化
+  for (const r of results) {
+    if (!r.name) { r.crowdingPct = 0; r.crowdingChange = 0; continue }
+    const share = recentShares.get(r.name) || 0
+    // 拥挤度分位：基于成交额占比的简单映射（全市场 ~130个申万二级行业）
+    const pct = share > 0.05 ? 90 : share > 0.03 ? 75 : share > 0.02 ? 60 : share > 0.01 ? 40 : share > 0.005 ? 25 : 10
+    r.crowdingPct = Math.min(100, Math.round(pct))
+
+    if (oldShares) {
+      const oldShare = oldShares.get(r.name) || 0
+      const change = oldShare > 0 ? Math.round((share - oldShare) / oldShare * 100) : 0
+      r.crowdingChange = Math.min(200, Math.max(-100, change))
+    } else {
+      r.crowdingChange = 0
+    }
+  }
+}
 
 // ============== 数学工具 ==============
 function mean(arr: number[]) { let s = 0; for (const v of arr) s += v; return s / arr.length }
