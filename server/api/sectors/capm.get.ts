@@ -193,14 +193,14 @@ export default defineEventHandler(async (event) => {
 
     // ── 5a. 拥挤度计算（成交额占比分位数 + 5日变化）──
     const dailyTotals = new Map<string, number>()
-    for (const [, items] of allSectorData) {
+    for (const [, items] of batchMap) {
       for (const item of items) {
         const td = String(item.trade_date)
         dailyTotals.set(td, (dailyTotals.get(td) || 0) + (Number(item.amount) || 0))
       }
     }
     for (const r of results) {
-      const items = allSectorData.get(r.ts_code)
+      const items = batchMap.get(r.ts_code)
       if (!items || items.length < 20) { r.crowdingPct = 0; r.crowdingChange = 0; continue }
       const shares: number[] = []
       for (const item of items) {
