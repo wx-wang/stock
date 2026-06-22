@@ -20,8 +20,10 @@ function formatDate(d: Date) {
   return `${y}${m}${day}`
 }
 
+const CACHE_VERSION = 'v2'  // 改数据结构时递增，缓存自动失效
+
 function getCachePath(days: number, indexCode: string): string {
-  return path.join(PERSIST_DIR, `sectors-capm-d${days}-${indexCode.replace('.', '_')}.json`)
+  return path.join(PERSIST_DIR, `sectors-capm-d${days}-${indexCode.replace('.', '_')}-${CACHE_VERSION}.json`)
 }
 
 async function loadCache(days: number, indexCode: string): Promise<any | null> {
