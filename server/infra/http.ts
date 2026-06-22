@@ -9,7 +9,7 @@ import { exec } from 'node:child_process'
 /** GET 请求 */
 export async function httpGet(url: string, timeoutSec = 30): Promise<string> {
   try {
-    const resp = await fetch(url, { signal: AbortSignal.timeout(timeoutSec * 1000) } as any)
+    const resp = await fetch(url, { signal: AbortSignal.timeout(timeoutSec * 1000), headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Referer': 'https://www.baidu.com/' } } as any)
     return await resp.text()
   } catch {
     return ''

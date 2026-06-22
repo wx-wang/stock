@@ -82,15 +82,13 @@ function describeKDJ(K: (number | null)[], D: (number | null)[], J: (number | nu
 async function fetchCapm(tsCode: string) {
   try {
     const ed = formatDate(new Date()), sd = formatDate(new Date(Date.now() - 250 * 864e4))
-    const url = 'http://lianghua.nanyangqiankun.top', tk = '65a038811c294bcdbc49e4ca1d86e144686ea7d4e84bdc114b94406d44f9'
-    const [[sr, ir]] = await Promise.all([Promise.all([
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_name: 'daily', token: tk, params: { ts_code: tsCode, start_date: sd, end_date: ed }, fields: 'trade_date,pct_chg' }) }),
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_name: 'index_daily', token: tk, params: { ts_code: '000300.SH', start_date: sd, end_date: ed }, fields: 'trade_date,pct_chg' }) }),
-    ])])
-    const [sd2, id2] = await Promise.all([sr.json(), ir.json()])
+    const [sr, ir] = await Promise.all([
+      getDaily(tsCode, sd, ed),
+      getIndexDaily('000300.SH', sd, ed),
+    ])
     const sm = new Map<string, number>(), mm = new Map<string, number>()
-    for (const i of sd2?.data?.items || []) { const v = Number(i[1]); if (!isNaN(v)) sm.set(i[0], v / 100) }
-    for (const i of id2?.data?.items || []) { const v = Number(i[1]); if (!isNaN(v)) mm.set(i[0], v / 100) }
+    for (const i of sr) { const v = Number(i.pct_chg); if (!isNaN(v)) sm.set(i.trade_date, v / 100) }
+    for (const i of ir) { const v = Number(i.pct_chg); if (!isNaN(v)) mm.set(i.trade_date, v / 100) }
     const xs: number[] = [], ys: number[] = []
     for (const d of new Set([...sm.keys(), ...mm.keys()])) { const sr = sm.get(d), mr = mm.get(d); if (sr != null && mr != null) { xs.push(mr); ys.push(sr) } }
     if (xs.length < 60) return null
