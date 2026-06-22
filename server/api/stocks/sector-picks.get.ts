@@ -186,6 +186,9 @@ export default defineEventHandler(async (event) => {
           if (!st.close || st.close <= 0) continue
           if (!st.peTtm || st.peTtm <= 0) continue
 
+          // 强制要求：必须入选过券商金股
+          if (!st.goldenCount12m && !st.isGoldenRecent) continue
+
           scoredStocks.push(buildScore(st, sector))
         }
       } catch (e: any) {
