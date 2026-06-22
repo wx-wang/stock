@@ -117,20 +117,30 @@ export default defineEventHandler(async (event) => {
     const count = Math.min(parseInt(q.count as string) || 10, 20)
     const force = q.force === 'true'
 
-    // Cache check
     const cachePath = getCachePath(days, rawQuad)
+    const capmFile = path.join(PERSIST_DIR, `sectors-capm-d${days}-000300_SH-v5.json`)
+
+    // Cache check — 仅当天有效 + CAPM缓存不能比它新
     if (!force) {
       try {
         const cached = JSON.parse(await fs.readFile(cachePath, 'utf-8'))
         if (cached._date === todayStr()) {
-          console.log('[sector-picks] returning cached result')
-          return cached
+          // 检查 CAPM 缓存时间戳，如果CAPM更新了则需重建
+          try {
+            const capmStat = await fs.stat(capmFile)
+            const picksStat = await fs.stat(cachePath)
+            if (capmStat.mtimeMs <= picksStat.mtimeMs) {
+              console.log('[sector-picks] returning cached result')
+              return cached
+            }
+          } catch {}
         }
       } catch { /* build fresh */ }
     }
 
     // 1. Load data
     await fs.mkdir(PERSIST_DIR, { recursive: true })
+
     const sectors = await readCapmCache(days)
     if (!sectors.length) {
       return { success: false, error: '行业CAPM缓存不存在，请先访问 /sector-rotation 页面' }
