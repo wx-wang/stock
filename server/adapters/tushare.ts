@@ -116,9 +116,18 @@ export function getIndexClassify(level = 'L2', src = 'SW2021'): Promise<any[]> {
     'index_code,industry_name,level,industry_code,is_pub,parent_code,src', { ttl: 24 * 3600 * 1000 })
 }
 
+/** 申万行业指数技术因子（含成交额） — 单日返回全行业 */
+export function getIdxFactorPro(tradeDate: string, fields?: string): Promise<any[]> {
+  return callTushare('idx_factor_pro',
+    { trade_date: tradeDate },
+    fields || 'ts_code,trade_date,amount,vol,pct_change',
+    { ttl: 24 * 60 * 60 * 1000 })
+}
+
+/** 申万行业指数批量日线（旧方法，无amount，保留兼容） */
 export function getSwDaily(tsCode: string, startDate: string, endDate: string): Promise<any[]> {
   return callTushare('sw_daily', { ts_code: tsCode, start_date: startDate, end_date: endDate },
-    'ts_code,trade_date,close,pct_change,amount', { ttl: 5 * 60 * 1000 })
+    'ts_code,trade_date,close,pct_change', { ttl: 5 * 60 * 1000 })
 }
 
 export async function getSwDailyBatch(tsCodes: string[], startDate: string, endDate: string): Promise<Map<string, any[]>> {

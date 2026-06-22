@@ -20,4 +20,5 @@ export {
   getSwDailyBatch,
   getBrokerRecommend,
   getIndexMember,
+  getIdxFactorPro,
 } from '../adapters/tushare'
