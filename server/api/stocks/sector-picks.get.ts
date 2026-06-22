@@ -86,7 +86,7 @@ async function readScreenerCache(): Promise<Map<string, any>> {
 
 // ── 读取 CAPM 缓存（复用 sectors/capm 的缓存） ──
 async function readCapmCache(days: number, indexCode = '000300.SH'): Promise<SectorData[]> {
-  const capmFile = path.join(PERSIST_DIR, `sectors-capm-d${days}-${indexCode.replace('.','_')}-v3.json`)
+  const capmFile = path.join(PERSIST_DIR, `sectors-capm-d${days}-${indexCode.replace('.','_')}-v4.json`)
   try {
     const raw = await fs.readFile(capmFile, 'utf-8')
     const data = JSON.parse(raw)

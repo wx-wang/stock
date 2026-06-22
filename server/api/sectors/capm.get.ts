@@ -20,7 +20,7 @@ function formatDate(d: Date) {
   return `${y}${m}${day}`
 }
 
-const CACHE_VERSION = 'v3'  // 改数据结构时递增，缓存自动失效
+const CACHE_VERSION = 'v4'  // 改数据结构时递增，缓存自动失效
 
 function getCachePath(days: number, indexCode: string): string {
   return path.join(PERSIST_DIR, `sectors-capm-d${days}-${indexCode.replace('.', '_')}-${CACHE_VERSION}.json`)
@@ -292,13 +292,21 @@ async function computeCrowding(results: SectorCapmResult[], endDate: string, _st
   const recentShares = await getIndustryShares(recentDay)
   const oldShares = oldDay ? await getIndustryShares(oldDay) : null
 
-  // 4. 赋值拥挤度（成交额占比阈值法）和变化
+  // 4. 赋值拥挤度（真实百分位）和变化
+  const allShares: { name: string; share: number }[] = []
+  for (const r of results) {
+    const share = recentShares.get(r.name) || 0
+    allShares.push({ name: r.name, share })
+  }
+  // 按 share 排序算百分位
+  const sorted = allShares.map(s => s.share).sort((a, b) => a - b)
   for (const r of results) {
     if (!r.name) { r.crowdingPct = 0; r.crowdingChange = 0; continue }
     const share = recentShares.get(r.name) || 0
-    // 拥挤度分位：基于成交额占比的简单映射（全市场 ~130个申万二级行业）
-    const pct = share > 0.05 ? 90 : share > 0.03 ? 75 : share > 0.02 ? 60 : share > 0.01 ? 40 : share > 0.005 ? 25 : 10
-    r.crowdingPct = Math.min(100, Math.round(pct))
+    // 真实百分位：share 在所有行业中的排名位置
+    const rank = sorted.findIndex(v => v >= share)
+    const pct = sorted.length > 1 ? Math.round(rank / (sorted.length - 1) * 100) : 50
+    r.crowdingPct = Math.min(100, Math.max(0, pct))
 
     if (oldShares) {
       const oldShare = oldShares.get(r.name) || 0
