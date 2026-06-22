@@ -175,7 +175,7 @@ async function refresh() {
   error.value = ''
   try {
     const res = await $fetch<SectorPicksResult>('/api/stocks/sector-picks', {
-      query: { days: 60, quadrant: 'Q1,Q2', count: 10 }
+      query: { days: 60, quadrant: 'Q1,Q2', count: 10, force: 'true' }
     })
     if (!res.success) { error.value = res.error || '加载失败'; return }
     result.value = res
