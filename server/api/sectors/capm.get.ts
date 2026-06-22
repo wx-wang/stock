@@ -194,9 +194,15 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // ── 5a. 拥挤度计算（个股日线按行业汇总成交额占比）──
-    // sw_daily 没有 amount 字段，改用 daily（个股日线）按 screener 中的行业分组
-    await computeCrowding(results, endDate, startDate)
+    // ── 5a. 拥挤度计算（idx_factor_pro, 30秒超时）──
+    try {
+      await Promise.race([
+        computeCrowding(results, endDate, startDate),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000))
+      ])
+    } catch (e: any) {
+      console.warn('[capm] crowding skipped:', e.message)
+    }
 
     // ─── 5. 计算 RPS ───
     const validForRps = results.filter(r => !r.error && r.tradingDays >= 20)
@@ -281,34 +287,40 @@ async function computeCrowding(results: SectorCapmResult[], endDate: string, _st
 
   console.log(`[capm] crowding: cache has ${cachedDates.size} days, missing ${needed.length}`)
 
-  // 3. 逐日补拉（idx_factor_pro 每日期一次全行业）
+  // 3. 并行补拉（5并发），大幅提速
   if (needed.length > 0) {
     let fetched = 0
-    for (const ds of needed) {
-      try {
-        const rows = await getIdxFactorPro(ds, 'ts_code,amount,vol,pct_change')
-        if (rows.length < 10) continue  // 非交易日
-        const dayMap = new Map<string, { amount: number; vol: number; pctChange: number }>()
-        for (const r of rows) {
-          const tsCode = String(r.ts_code || '')
-          if (!tsCode.endsWith('.SI')) continue  // 只保留申万行业指数
-          dayMap.set(tsCode, {
-            amount: Number(r.amount) || 0,
-            vol: Number(r.vol) || 0,
-            pctChange: Number(r.pct_change) || 0,
-          })
+    let stopped = false
+
+    // Process in batches of 5
+    for (let i = 0; i < needed.length && !stopped; i += 5) {
+      const batch = needed.slice(i, i + 5)
+      await Promise.all(batch.map(async (ds) => {
+        if (stopped) return
+        try {
+          const rows = await getIdxFactorPro(ds, 'ts_code,amount,vol,pct_change')
+          if (rows.length < 10) return  // 非交易日
+          const dayMap = new Map<string, { amount: number; vol: number; pctChange: number }>()
+          for (const r of rows) {
+            const tsCode = String(r.ts_code || '')
+            if (!tsCode.endsWith('.SI')) continue
+            dayMap.set(tsCode, {
+              amount: Number(r.amount) || 0,
+              vol: Number(r.vol) || 0,
+              pctChange: Number(r.pct_change) || 0,
+            })
+          }
+          if (dayMap.size > 10) {
+            cache.set(ds, dayMap)
+            fetched++
+          }
+        } catch (e: any) {
+          if (e.message?.includes('积分') || e.message?.includes('权限')) {
+            console.warn('[capm] crowding: idx_factor_pro requires 5000 points, falling back')
+            stopped = true
+          }
         }
-        if (dayMap.size > 10) {
-          cache.set(ds, dayMap)
-          fetched++
-        }
-      } catch (e: any) {
-        if (e.message?.includes('积分') || e.message?.includes('权限')) {
-          console.warn('[capm] crowding: idx_factor_pro requires 5000 points, falling back')
-          return  // 积分不够就放弃，不阻塞主流程
-        }
-        // 非交易日或其他错误静默跳过
-      }
+      }))
     }
     console.log(`[capm] crowding: fetched ${fetched} new days`)
     saveCrowdingCache(cache)
