@@ -270,60 +270,54 @@ function formatDateReverse(d: Date): string {
 }
 
 async function computeCrowding(results: SectorCapmResult[], endDate: string, _startDate: string) {
-  // 1. 加载增量缓存
+  // 1. 增量缓存：只补新天数
   const cache = loadCrowdingCache()
   const cachedDates = new Set(cache.keys())
 
-  // 2. 确定需要补拉的天数：最近 250 个交易日中不在缓存里的
-  const needed: string[] = []
+  // 找最近的交易日
   const ed = new Date(endDate.slice(0,4)+'-'+endDate.slice(4,6)+'-'+endDate.slice(6,8))
-  for (let i = 0; i < 500 && needed.length < CROWDING_WINDOW; i++) {
-    const d = new Date(ed)
-    d.setDate(d.getDate() - i)
-    if (d.getDay() === 0 || d.getDay() === 6) continue
+  let latestCached: string | null = null
+  for (let i = 0; i < 10; i++) {
+    const d = new Date(ed); d.setDate(d.getDate() - i)
     const ds = formatDateReverse(d)
-    if (!cachedDates.has(ds)) needed.push(ds)
+    if (cachedDates.has(ds)) { latestCached = ds; break }
   }
 
-  console.log(`[capm] crowding: cache has ${cachedDates.size} days, missing ${needed.length}`)
+  // 2. 日期范围：首次全拉250天，后续只补新增
+  const startStr = latestCached
+    ? (() => { const d = new Date(latestCached.slice(0,4)+'-'+latestCached.slice(4,6)+'-'+latestCached.slice(6,8)); d.setDate(d.getDate() + 1); return formatDateReverse(d); })()
+    : (() => { const d = new Date(ed); d.setDate(d.getDate() - 380); return formatDateReverse(d); })()
+  const endStr = formatDateReverse(ed)
 
-  // 3. 并行补拉（5并发），大幅提速
-  if (needed.length > 0) {
-    let fetched = 0
-    let stopped = false
+  console.log(`[capm] crowding: cache has ${cachedDates.size} days, range ${startStr}~${endStr}`)
 
-    // Process in batches of 5
-    for (let i = 0; i < needed.length && !stopped; i += 5) {
-      const batch = needed.slice(i, i + 5)
-      await Promise.all(batch.map(async (ds) => {
-        if (stopped) return
-        try {
-          const rows = await getIdxFactorPro(ds, 'ts_code,amount,vol,pct_change')
-          if (rows.length < 10) return  // 非交易日
-          const dayMap = new Map<string, { amount: number; vol: number; pctChange: number }>()
-          for (const r of rows) {
-            const tsCode = String(r.ts_code || '')
-            if (!tsCode.endsWith('.SI')) continue
-            dayMap.set(tsCode, {
-              amount: Number(r.amount) || 0,
-              vol: Number(r.vol) || 0,
-              pctChange: Number(r.pct_change) || 0,
-            })
-          }
-          if (dayMap.size > 10) {
-            cache.set(ds, dayMap)
-            fetched++
-          }
-        } catch (e: any) {
-          if (e.message?.includes('积分') || e.message?.includes('权限')) {
-            console.warn('[capm] crowding: idx_factor_pro requires 5000 points, falling back')
-            stopped = true
-          }
-        }
-      }))
+  // 3. 范围查询 — 250天总共 ~5次API，10秒内完成
+  if (!latestCached || startStr <= endStr) {
+    try {
+      const rows = await getIdxFactorPro(startStr, endStr, 'ts_code,trade_date,amount,vol,pct_change')
+      console.log(`[capm] crowding: got ${rows.length} rows from idx_factor_pro`)
+
+      for (const r of rows) {
+        const tsCode = String(r.ts_code || '')
+        const td = String(r.trade_date || '')
+        if (!tsCode.endsWith('.SI') || !td) continue
+        if (!cache.has(td)) cache.set(td, new Map())
+        cache.get(td)!.set(tsCode, {
+          amount: Number(r.amount) || 0,
+          vol: Number(r.vol) || 0,
+          pctChange: Number(r.pct_change) || 0,
+        })
+      }
+      saveCrowdingCache(cache)
+      console.log(`[capm] crowding: cache now has ${cache.size} days`)
+    } catch (e: any) {
+      if (e.message?.includes('积分') || e.message?.includes('权限')) {
+        console.warn('[capm] crowding: idx_factor_pro requires 5000 points, skipping')
+      } else {
+        console.warn('[capm] crowding fetch error:', e.message)
+      }
+      return
     }
-    console.log(`[capm] crowding: fetched ${fetched} new days`)
-    saveCrowdingCache(cache)
   }
 
   if (cache.size < 5) { console.warn('[capm] crowding: insufficient data'); return }

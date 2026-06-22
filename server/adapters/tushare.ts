@@ -116,12 +116,40 @@ export function getIndexClassify(level = 'L2', src = 'SW2021'): Promise<any[]> {
     'index_code,industry_name,level,industry_code,is_pub,parent_code,src', { ttl: 24 * 3600 * 1000 })
 }
 
-/** 申万行业指数技术因子（含成交额） — 单日返回全行业 */
-export function getIdxFactorPro(tradeDate: string, fields?: string): Promise<any[]> {
-  return callTushare('idx_factor_pro',
-    { trade_date: tradeDate },
-    fields || 'ts_code,trade_date,amount,vol,pct_change',
-    { ttl: 24 * 60 * 60 * 1000 })
+/** 申万行业指数技术因子（含成交额） — 支持日期范围，每次最多8000行 */
+export async function getIdxFactorPro(startDate: string, endDate: string, fields?: string): Promise<any[]> {
+  // 日期范围查询，单次最多8000行，分段获取
+  const all: any[] = []
+  const start = new Date(startDate.slice(0,4)+'-'+startDate.slice(4,6)+'-'+startDate.slice(6,8))
+  const end = new Date(endDate.slice(0,4)+'-'+endDate.slice(4,6)+'-'+endDate.slice(6,8))
+
+  // 每次取 ~60天 × ~130行业 ≈ 7800行 < 8000，安全
+  let chunkStart = new Date(start)
+  while (chunkStart <= end) {
+    const chunkEnd = new Date(chunkStart)
+    chunkEnd.setDate(chunkEnd.getDate() + 60)
+    if (chunkEnd > end) chunkEnd.setTime(end.getTime())
+
+    const s = fmtDate(chunkStart)
+    const e = fmtDate(chunkEnd)
+
+    const batch = await callTushare('idx_factor_pro',
+      { start_date: s, end_date: e },
+      fields || 'ts_code,trade_date,amount,vol,pct_change',
+      { ttl: 24 * 60 * 60 * 1000 })
+    all.push(...batch)
+
+    chunkStart = new Date(chunkEnd)
+    chunkStart.setDate(chunkStart.getDate() + 1)
+  }
+  return all
+}
+
+function fmtDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}${m}${day}`
 }
 
 /** 申万行业指数批量日线（旧方法，无amount，保留兼容） */
