@@ -4,9 +4,11 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   modules: ['@pinia/nuxt'],
   ssr: false,
+  devServer: {
+    port: 80,
+    host: '0.0.0.0',
+  },
   runtimeConfig: {
-    // 所有凭据从 server/config.ts 读取（支持 process.env 覆盖）
-    // 此处保留为空占位，实际值在 server/config.ts 中定义
     tushareToken: '',
     tushareUrl: '',
     deepseekApiKey: '',
