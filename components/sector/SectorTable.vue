@@ -59,6 +59,10 @@
               Sharpe
               <span v-if="sortKey === 'sharpe'" class="sort-indicator">{{ sortDesc ? '↓' : '↑' }}</span>
             </th>
+            <th class="num-col hide-mobile" @click="setSort('crowdingPct')">
+              🔥 拥挤
+              <span v-if="sortKey === 'crowdingPct'" class="sort-indicator">{{ sortDesc ? '↓' : '↑' }}</span>
+            </th>
             <th class="conclusion-col">结论</th>
           </tr>
         </thead>
@@ -105,6 +109,9 @@
             <td class="num-col" :class="getSharpeClass(s.sharpe)">
               {{ s.sharpe?.toFixed(3) || '-' }}
             </td>
+            <td class="num-col hide-mobile" :style="crowdingStyle(s)">
+              {{ crowdingLabel(s) }}
+            </td>
             <td class="conclusion-col">
               <span class="conclusion-text">{{ s.conclusion }}</span>
             </td>
@@ -150,6 +157,8 @@ interface SectorData {
   alphaMomentum?: number     // α 年化斜率
   alphaMomentumT?: number    // 斜率 t 值
   alphaMomentumSig?: boolean // |t|≥2
+  crowdingPct?: number       // 拥挤度 (0~100分位)
+  crowdingChange?: number    // 5日拥挤度变化
 }
 
 const props = defineProps<{
@@ -240,6 +249,22 @@ function getSharpeClass(sharpe?: number) {
   if (sharpe > 0.5) return 'sharpe-mid'
   if (sharpe < 0) return 'sharpe-low'
   return ''
+}
+
+function crowdingLabel(s: SectorData): string {
+  const pct = s.crowdingPct ?? 0
+  if (pct === 0) return '--'
+  const chg = s.crowdingChange ?? 0
+  const arrow = chg > 10 ? '↑' : chg < -10 ? '↓' : ''
+  return `${pct}${arrow}`
+}
+
+function crowdingStyle(s: SectorData): Record<string, string> {
+  const pct = s.crowdingPct ?? 0
+  if (pct === 0) return {}
+  if (pct >= 80) return { color: '#E15241', fontWeight: '700' }
+  if (pct >= 60) return { color: '#F0A030', fontWeight: '600' }
+  return { color: '#22AB94' }
 }
 
 function getRpsClass(rps?: number) {

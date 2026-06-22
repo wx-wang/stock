@@ -132,6 +132,13 @@
     <!-- 行业掘金：个股推荐 -->
     <SectorPicks />
 
+    <!-- 拥挤度散点图 -->
+    <SectorCrowdingChart
+      :sectors="data?.sectors || []"
+      :loading="loading"
+      :error="error"
+    />
+
     <!-- 行业趋势弹窗 -->
     <SectorTrendPopup
       v-if="trendIndexCode"

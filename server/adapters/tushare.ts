@@ -118,7 +118,7 @@ export function getIndexClassify(level = 'L2', src = 'SW2021'): Promise<any[]> {
 
 export function getSwDaily(tsCode: string, startDate: string, endDate: string): Promise<any[]> {
   return callTushare('sw_daily', { ts_code: tsCode, start_date: startDate, end_date: endDate },
-    'ts_code,trade_date,close,pct_change', { ttl: 5 * 60 * 1000 })
+    'ts_code,trade_date,close,pct_change,amount', { ttl: 5 * 60 * 1000 })
 }
 
 export async function getSwDailyBatch(tsCodes: string[], startDate: string, endDate: string): Promise<Map<string, any[]>> {

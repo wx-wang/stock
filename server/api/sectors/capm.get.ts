@@ -191,6 +191,32 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // ── 5a. 拥挤度计算（成交额占比分位数 + 5日变化）──
+    const dailyTotals = new Map<string, number>()
+    for (const [, items] of allSectorData) {
+      for (const item of items) {
+        const td = String(item.trade_date)
+        dailyTotals.set(td, (dailyTotals.get(td) || 0) + (Number(item.amount) || 0))
+      }
+    }
+    for (const r of results) {
+      const items = allSectorData.get(r.ts_code)
+      if (!items || items.length < 20) { r.crowdingPct = 0; r.crowdingChange = 0; continue }
+      const shares: number[] = []
+      for (const item of items) {
+        const total = dailyTotals.get(String(item.trade_date)) || 1e9
+        shares.push((Number(item.amount) || 0) / total)
+      }
+      const currentShare = shares[shares.length - 1]
+      const lookback = shares.slice(Math.max(0, shares.length - 251), shares.length - 1)
+      const below = lookback.filter(s => s < currentShare).length
+      const pct = Math.round(below / Math.max(1, lookback.length) * 100)
+      const share5dAgo = shares.length > 6 ? shares[shares.length - 6] : shares[0]
+      const change = Math.round((currentShare - share5dAgo) / Math.max(1e-9, share5dAgo) * 100)
+      r.crowdingPct = Math.min(100, pct)
+      r.crowdingChange = Math.min(200, Math.max(-100, change))
+    }
+
     // ─── 5. 计算 RPS ───
     const validForRps = results.filter(r => !r.error && r.tradingDays >= 20)
       .sort((a, b) => b.cumulativeReturn! - a.cumulativeReturn!)
@@ -268,4 +294,6 @@ interface SectorCapmResult {
   alphaMomentum?: number     // Alpha 年度化斜率（趋势强度）
   alphaMomentumT?: number    // 斜率 t 值
   alphaMomentumSig?: boolean // t≥2 视为显著
+  crowdingPct?: number       // 拥挤度分位数 (0~100)
+  crowdingChange?: number    // 5日拥挤度变化 (%)
 }
