@@ -133,6 +133,7 @@ const detailError = ref<string | null>(null)
 // 指数数据
 interface IndexTrend {
   code: string
+  fullCode: string
   name: string
   close: number
   score: number
@@ -216,7 +217,7 @@ function handleSelect(stock: StockSummary) {
 async function handleIndexClick(idx: IndexTrend) {
   // 构造一个 StockSummary 类型的对象给 fetchDetail
   const fakeStock: StockSummary = {
-    code: idx.code,
+    code: idx.fullCode || idx.code,  // 用带后缀的完整代码
     name: idx.name,
     close: idx.close,
     score: idx.score,
