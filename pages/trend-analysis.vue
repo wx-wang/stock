@@ -56,6 +56,10 @@
 </template>
 
 <script setup lang="ts">
+import { useUiStore } from '~/stores/ui'
+
+const uiStore = useUiStore()
+
 interface StockSummary {
   code: string
   name: string
@@ -147,6 +151,7 @@ function goBack() {
 
 // 页面挂载时加载
 onMounted(() => {
+  uiStore.setActiveNav('trend')
   fetchBatch()
 })
 </script>

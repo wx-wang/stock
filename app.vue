@@ -31,6 +31,9 @@
         <NuxtLink to="/broker-golden" class="nav-item" :class="{ active: uiStore.activeNav === 'broker-golden' }" @click="uiStore.setActiveNav('broker-golden')">
           <span class="nav-icon">🏦</span> 券商金股
         </NuxtLink>
+        <NuxtLink to="/trend-analysis" class="nav-item" :class="{ active: uiStore.activeNav === 'trend' }" @click="uiStore.setActiveNav('trend')">
+          <span class="nav-icon">🔭</span> 趋势分析
+        </NuxtLink>
         <NuxtLink to="/screener-overview" class="nav-item" :class="{ active: uiStore.activeNav === 'screener' }" @click="uiStore.setActiveNav('screener')">
           <span class="nav-icon">📋</span> 股票一览
         </NuxtLink>
@@ -85,6 +88,10 @@
         <span class="tab-icon">🏦</span>
         <span class="tab-label">金股</span>
       </NuxtLink>
+      <NuxtLink to="/trend-analysis" class="tab-item" :class="{ active: uiStore.activeNav === 'trend' }" @click="uiStore.setActiveNav('trend')">
+        <span class="tab-icon">🔭</span>
+        <span class="tab-label">趋势</span>
+      </NuxtLink>
     </nav>
   </div>
 </template>
@@ -99,7 +106,7 @@ const uiStore = useUiStore()
 const { isDark, toggleTheme } = useTheme()
 
 const pageTitle = computed(() => {
-  const titles: Record<string, string> = { portfolio: '持仓概览', sector: '行业轮动', rps: '行业RPS', market: '大盘分析', watchlist: '自选股分析', 'broker-golden': '券商金股', screener: '股票一览表' }
+  const titles: Record<string, string> = { portfolio: '持仓概览', sector: '行业轮动', rps: '行业RPS', market: '大盘分析', watchlist: '自选股分析', 'broker-golden': '券商金股', screener: '股票一览表', trend: '趋势分析' }
   return titles[uiStore.activeNav] || '股票看板'
 })
 
