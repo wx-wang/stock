@@ -584,6 +584,7 @@ export default defineEventHandler(async (_event) => {
       const { jieqi, jieqiDays, rightDays } = runJieqiMachine(snapshots)
 
       // ── 入场/出场信号 ──
+      const prevSnapshot = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null
       // 入场：昨日温 → 今日热或沸
       const entrySignal = prevSnapshot
         ? prevSnapshot.temp === '温' && ['热', '沸'].includes(lastSnapshot.temp)
