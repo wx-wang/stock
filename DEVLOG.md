@@ -2,6 +2,32 @@
 
 > 每次功能改动、bug修复、架构决策，都在此记录。格式：日期 + 标题 + 背景/方案/影响。
 
+## 2026-07-03 · 趋势分析体系 — 完成实现 ✅
+
+### 文件清单
+
+| 文件 | 行数 | 说明 |
+|---|---|---|
+| `server/api/trend/batch.get.ts` | 625 | 全市场批量趋势摘要计算 |
+| `server/api/trend/analyze.get.ts` | 635 | 单股 250 日完整时间序列 |
+| `components/trend/TrendTable.vue` | 619 | 搜索 + 筛选 + 表格 |
+| `components/trend/TrendChart.vue` | 713 | ECharts 均线图 + hover tooltip |
+| `pages/trend-analysis.vue` | 307 | 页面入口（列表⇄详情切换） |
+
+### 关键实现细节
+
+- **batch.get.ts**: stock_basic 获取全市场 ~5000 只 A 股；按交易日增量拉 daily 数据（persist/trend-daily/），缺失日 5 并发补拉；Wilder's ATR 14/20 日；节气状态机从序列第一天重跑（无跨请求状态）
+- **analyze.get.ts**: getDaily 单股 250 天，逐日计算 MA/ATR/温度/节气/间距/信号；内存 cache 5 分钟
+- **TrendTable.vue**: 搜索框 + 温度筛选下拉；9 档温度彩色 badge；响应式隐藏列
+- **TrendChart.vue**: ECharts 5 线图（close/MA5/10/20/60）+ 渐变 area + custom tooltip（含日期/收盘价/温度+emoji/节气/ATR）；底部 4 摘要卡
+- **trend-analysis.vue**: onMounted 调 batch API，click→调 analyze API，视图切换动画
+
+### 部署说明
+
+- 首次访问需 120 次 API 调用来建日线缓存（约 10-15 秒），建议页面显示进度
+- 后续每天只需 1-2 次增量拉取
+- 日线缓存结构：`persist/trend-daily/{YYYYMMDD}.json`，最终结果：`persist/trend-batch.json`
+
 ---
 
 ## 2026-07-03 · 趋势分析体系 — 设计阶段（待开发）
