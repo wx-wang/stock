@@ -82,6 +82,32 @@ interface TrendResult {
     atr: number | null
   }>
   signals: Array<{ type: string; text: string }>
+  backtest: BacktestResult
+}
+
+interface BacktestResult {
+  totalTrades: number
+  winCount: number
+  lossCount: number
+  winRate: number | null
+  avgReturn: number | null
+  maxReturn: number | null
+  maxDrawdown: number | null
+  totalReturn: number | null
+  trades: Array<{
+    buyDate: string
+    buyPrice: number
+    sellDate: string | null
+    sellPrice: number | null
+    returnPct: number | null
+    holding: boolean  // 是否还在持仓中
+  }>
+}
+
+const EMPTY_BACKTEST: BacktestResult = {
+  totalTrades: 0, winCount: 0, lossCount: 0,
+  winRate: null, avgReturn: null, maxReturn: null,
+  maxDrawdown: null, totalReturn: null, trades: [],
 }
 
 // ========== 代码标准化 ==========
@@ -343,6 +369,109 @@ function generateSignals(latest: ComputedDay, atrRatio: number | null): Array<{ 
   return signals
 }
 
+// ========== 回测 ==========
+
+interface Trade {
+  buyDate: string
+  buyPrice: number
+  sellDate: string | null
+  sellPrice: number | null
+  returnPct: number | null
+  holding: boolean
+}
+
+function computeBacktest(computedDays: ComputedDay[]): BacktestResult {
+  const trades: Trade[] = []
+  let holding = false
+  let currentTrade: { buyDate: string; buyPrice: number; buyIdx: number } | null = null
+
+  // 从第 1 天开始扫描（需要昨天温度），到倒数前一天（需要明天开盘买入/卖出）
+  for (let i = 1; i < computedDays.length - 1; i++) {
+    const prev = computedDays[i - 1]
+    const curr = computedDays[i]
+    const next = computedDays[i + 1]
+
+    // ── 入场信号：昨天温、今天热/沸 → T+1 开盘买入 ──
+    if (!holding && prev.temperature === '温' && ['热', '沸'].includes(curr.temperature)) {
+      if (next.open > 0) {
+        currentTrade = {
+          buyDate: next.date || '',
+          buyPrice: next.open,
+          buyIdx: i + 1,
+        }
+        holding = true
+      }
+      continue
+    }
+
+    // ── 出场信号：昨天沸/热/温、今天平/凉/寒 → T+1 开盘卖出 ──
+    if (holding && currentTrade) {
+      if (['沸', '热', '温'].includes(prev.temperature) && ['平', '凉', '寒'].includes(curr.temperature)) {
+        if (next.open > 0) {
+          const returnPct = ((next.open - currentTrade.buyPrice) / currentTrade.buyPrice) * 100
+          trades.push({
+            buyDate: currentTrade.buyDate,
+            buyPrice: currentTrade.buyPrice,
+            sellDate: next.date || '',
+            sellPrice: next.open,
+            returnPct: Math.round(returnPct * 100) / 100,
+            holding: false,
+          })
+          currentTrade = null
+          holding = false
+        }
+        continue
+      }
+    }
+  }
+
+  // 末尾未平仓
+  if (holding && currentTrade) {
+    trades.push({
+      buyDate: currentTrade.buyDate,
+      buyPrice: currentTrade.buyPrice,
+      sellDate: null,
+      sellPrice: null,
+      returnPct: null,
+      holding: true,
+    })
+  }
+
+  // 统计
+  const closedTrades = trades.filter(t => !t.holding)
+  const winCount = closedTrades.filter(t => (t.returnPct ?? 0) > 0).length
+  const lossCount = closedTrades.filter(t => (t.returnPct ?? 0) <= 0).length
+
+  const returns = closedTrades.map(t => t.returnPct!).filter(r => r != null)
+  const winRate = closedTrades.length > 0 ? winCount / closedTrades.length : null
+  const avgReturn = returns.length > 0 ? returns.reduce((a, b) => a + b, 0) / returns.length : null
+  const maxReturn = returns.length > 0 ? Math.max(...returns) : null
+  const totalReturn = returns.length > 0 ? returns.reduce((a, b) => a + b, 0) : null
+
+  // 最大回撤（从 peak 到 trough）
+  let maxDrawdown: number | null = null
+  let peak = 0
+  let runningTotal = 0
+  for (const r of returns) {
+    runningTotal += r
+    if (runningTotal > peak) peak = runningTotal
+    const dd = peak - runningTotal
+    if (dd > (maxDrawdown ?? 0)) maxDrawdown = dd
+  }
+
+  return {
+    totalTrades: trades.length,
+    winCount,
+    lossCount,
+    winRate: winRate != null ? Math.round(winRate * 10000) / 100 : null,
+    avgReturn: avgReturn != null ? Math.round(avgReturn * 100) / 100 : null,
+    maxReturn: maxReturn != null ? Math.round(maxReturn * 100) / 100 : null,
+    maxDrawdown: maxDrawdown != null ? Math.round(maxDrawdown * 100) / 100 : null,
+    totalReturn: totalReturn != null ? Math.round(totalReturn * 100) / 100 : null,
+    trades,
+  }
+}
+
 // ========== 多股票名称缓存 ==========
 
 /** 内存名称缓存（从 stock_basic 拉一次，缓存 24h） */
@@ -398,7 +527,7 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
     const days = Math.max(60, Math.min(daysParam, 500)) // 限制 60-500
 
     if (!rawCode) {
-      return { success: false, code: '', name: '', summary: {} as any, series: [], signals: [] }
+      return { success: false, code: '', name: '', summary: {} as any, series: [], signals: [], backtest: EMPTY_BACKTEST }
     }
 
     const tsCode = normalizeCode(rawCode)
@@ -431,6 +560,7 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
         summary: {} as any,
         series: [],
         signals: [{ type: 'error', text: '无法获取日线数据，请检查股票代码或网络' }],
+        backtest: EMPTY_BACKTEST,
       }
     }
 
@@ -455,6 +585,7 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
         summary: {} as any,
         series: [],
         signals: [{ type: 'error', text: `数据不足: 仅 ${sorted.length} 个交易日（需 >= 20）` }],
+        backtest: EMPTY_BACKTEST,
       }
     }
 
@@ -588,6 +719,9 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
       : null
     const signals = generateSignals(latest, atrRatioLatest)
 
+    // ── 回测 ──
+    const backtest = computeBacktest(computedDays)
+
     // ── 构造结果 ──
     const result: TrendResult = {
       success: true,
@@ -596,6 +730,7 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
       summary,
       series,
       signals,
+      backtest,
     }
 
     // ── 写入缓存 ──
@@ -614,6 +749,7 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
       summary: {} as any,
       series: [],
       signals: [{ type: 'error', text: `服务器错误: ${e.message || '未知错误'}` }],
+      backtest: EMPTY_BACKTEST,
     }
   }
 })

@@ -113,6 +113,77 @@
     <div v-if="$slots.signals && !loading" class="signal-cards">
       <slot name="signals" />
     </div>
+
+    <!-- Backtest section -->
+    <div v-if="backtest && backtest.trades && backtest.trades.length > 0 && !loading" class="backtest-section">
+      <div class="backtest-header">📊 信号回测</div>
+
+      <!-- Stats cards -->
+      <div class="backtest-stats">
+        <div class="backtest-stat">
+          <div class="stat-label">交易次数</div>
+          <div class="stat-value">{{ backtest.totalTrades }}</div>
+        </div>
+        <div class="backtest-stat">
+          <div class="stat-label">胜率</div>
+          <div class="stat-value" :class="{ 'color-up': (backtest.winRate ?? 0) >= 50, 'color-down': (backtest.winRate ?? 0) < 50 }">
+            {{ backtest.winRate != null ? backtest.winRate + '%' : '--' }}
+          </div>
+        </div>
+        <div class="backtest-stat">
+          <div class="stat-label">平均收益</div>
+          <div class="stat-value" :class="{ 'color-up': (backtest.avgReturn ?? 0) > 0, 'color-down': (backtest.avgReturn ?? 0) <= 0 }">
+            {{ backtest.avgReturn != null ? (backtest.avgReturn > 0 ? '+' : '') + backtest.avgReturn + '%' : '--' }}
+          </div>
+        </div>
+        <div class="backtest-stat">
+          <div class="stat-label">最大单次</div>
+          <div class="stat-value color-up">
+            {{ backtest.maxReturn != null ? '+' + backtest.maxReturn + '%' : '--' }}
+          </div>
+        </div>
+        <div class="backtest-stat">
+          <div class="stat-label">累计收益</div>
+          <div class="stat-value" :class="{ 'color-up': (backtest.totalReturn ?? 0) > 0, 'color-down': (backtest.totalReturn ?? 0) <= 0 }">
+            {{ backtest.totalReturn != null ? (backtest.totalReturn > 0 ? '+' : '') + backtest.totalReturn + '%' : '--' }}
+          </div>
+        </div>
+        <div class="backtest-stat">
+          <div class="stat-label">最大回撤</div>
+          <div class="stat-value color-down">
+            {{ backtest.maxDrawdown != null ? '-' + backtest.maxDrawdown + '%' : '--' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Trades table -->
+      <div class="backtest-table-wrap">
+        <table class="backtest-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>买入日期</th>
+              <th>买入价</th>
+              <th>卖出日期</th>
+              <th>卖出价</th>
+              <th>收益</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(t, i) in backtest.trades" :key="i" :class="{ 'holding-row': t.holding }">
+              <td>{{ i + 1 }}</td>
+              <td>{{ t.buyDate }}</td>
+              <td>{{ t.buyPrice?.toFixed(2) }}</td>
+              <td>{{ t.sellDate || '--' }}</td>
+              <td>{{ t.sellPrice?.toFixed(2) || '--' }}</td>
+              <td :class="{ 'color-up': (t.returnPct ?? 0) > 0, 'color-down': (t.returnPct ?? 0) <= 0, 'holding-label': t.holding }">
+                {{ t.holding ? '持仓中' : (t.returnPct != null ? (t.returnPct > 0 ? '+' : '') + t.returnPct + '%' : '--') }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -143,6 +214,10 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false,
+  },
+  backtest: {
+    type: Object,
+    default: null,
   },
 })
 
@@ -705,6 +780,109 @@ watch(
 
   .summary-cards {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── 回测区块 ────────────────────────────────────── */
+.backtest-section {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--bg-card, rgba(18, 22, 30, 0.6));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
+}
+
+.backtest-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #e0e6f0);
+  margin-bottom: 16px;
+}
+
+.backtest-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.backtest-stat {
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--bg-primary, rgba(10, 14, 22, 0.5));
+  border-radius: 8px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #e0e6f0);
+}
+
+.stat-value.color-up { color: #4CAF50; }
+.stat-value.color-down { color: #F44336; }
+
+.backtest-table-wrap {
+  overflow-x: auto;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.backtest-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.backtest-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary, rgb(10, 14, 22));
+  color: var(--text-secondary, #6b7280);
+  font-weight: 600;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  z-index: 1;
+}
+
+.backtest-table td {
+  padding: 7px 12px;
+  color: var(--text-primary, #c0c8d4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.holding-row {
+  opacity: 0.7;
+}
+
+.holding-label {
+  color: #FFB74D !important;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .backtest-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .backtest-table th:nth-child(4),
+  .backtest-table td:nth-child(4),
+  .backtest-table th:nth-child(5),
+  .backtest-table td:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .backtest-stats {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

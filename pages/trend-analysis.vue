@@ -53,6 +53,7 @@
         :code="detailData.code || selectedStock?.code || ''"
         :name="detailData.name || selectedStock?.name || ''"
         :loading="detailLoading"
+        :backtest="detailData.backtest"
       />
     </div>
   </div>
