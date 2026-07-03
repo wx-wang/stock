@@ -5,7 +5,7 @@
  * 缓存 5 分钟。
  */
 
-import { getDaily } from '@/server/lib/tushare'
+import { getIndexDaily } from '@/server/lib/tushare'
 
 // ========== 指数定义 ==========
 
@@ -134,7 +134,7 @@ export default defineEventHandler(async (_event) => {
 
   for (const idx of INDICES) {
     try {
-      const rawData = await getDaily(idx.code, startDate, endDate) as any[]
+      const rawData = await getIndexDaily(idx.code, startDate, endDate) as any[]
 
       if (!rawData || rawData.length < 20) {
         results.push({ code: idx.code, name: idx.name, error: '数据不足' })

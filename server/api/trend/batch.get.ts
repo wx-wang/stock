@@ -14,7 +14,7 @@
  *   - 最终结果：persist/trend-batch.json — 每天重建一次
  */
 
-import { getStockBasic, callTushare, getDaily } from '@/server/lib/tushare'
+import { getStockBasic, callTushare, getIndexDaily } from '@/server/lib/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 
@@ -315,7 +315,7 @@ export default defineEventHandler(async (_event) => {
       if (cached._lastTradeDate) {
         // 拉上证指数最近几天看有没有新交易日
         try {
-          const canaryBars = await getDaily(CANARY_CODE, cached._lastTradeDate, today8())
+          const canaryBars = await getIndexDaily(CANARY_CODE, cached._lastTradeDate, today8())
           if (canaryBars && canaryBars.length > 0) {
             // 取出最新交易日
             const dates = (canaryBars as any[]).map((b: any) => String(b.trade_date)).sort()
