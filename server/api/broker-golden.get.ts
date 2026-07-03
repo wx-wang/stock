@@ -44,36 +44,82 @@ async function buildGoldenCache(): Promise<any[]> {
   const result: any[] = []
 
   for (const month of months) {
-    try {
-      const rows = await getBrokerRecommend(month)
-      if (!rows.length) {
-        console.warn(`[broker-golden] month ${month} returned empty`)
-        continue
-      }
-
-      // 按股票聚合推荐次数
-      const countMap = new Map<string, { name: string; count: number }>()
-      for (const r of rows) {
-        const code = r.ts_code
-        if (!countMap.has(code)) countMap.set(code, { name: r.name, count: 0 })
-        countMap.get(code)!.count++
-      }
-
-      const stocks = Array.from(countMap.entries())
-        .sort((a, b) => b[1].count - a[1].count)
-        .map(([ts_code, v]) => ({
-          name: v.name, ts_code, count: v.count,
-          startPrice: 0, latestPrice: 0, changePct: 0,
-        }))
-
-      console.log(`[broker-golden] ${month}: ${stocks.length} stocks`)
-      result.push({ month, monthLabel: monthLabel(month), stocks })
-    } catch (e: any) {
-      console.error(`[broker-golden] failed to fetch month ${month}:`, e.message)
-    }
+    const entry = await fetchOneMonth(month)
+    if (entry) result.push(entry)
   }
 
   return result.sort((a, b) => String(b.month).localeCompare(String(a.month)))
+}
+
+/** 拉单个月份的金股数据 */
+async function fetchOneMonth(month: string): Promise<any | null> {
+  try {
+    const rows = await getBrokerRecommend(month)
+    if (!rows.length) return null
+
+    const countMap = new Map<string, { name: string; count: number }>()
+    for (const r of rows) {
+      const code = r.ts_code
+      if (!countMap.has(code)) countMap.set(code, { name: r.name, count: 0 })
+      countMap.get(code)!.count++
+    }
+
+    const stocks = Array.from(countMap.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([ts_code, v]) => ({
+        name: v.name, ts_code, count: v.count,
+        startPrice: 0, latestPrice: 0, changePct: 0,
+      }))
+
+    console.log(`[broker-golden] ${month}: ${stocks.length} stocks`)
+    return { month, monthLabel: monthLabel(month), stocks }
+  } catch (e: any) {
+    console.error(`[broker-golden] failed to fetch month ${month}:`, e.message)
+    return null
+  }
+}
+
+/** 下一个月的 YYYYMM */
+function nextMonth(ym: string): string {
+  const y = parseInt(ym.slice(0, 4)), m = parseInt(ym.slice(4, 6))
+  const d = new Date(y, m, 1)  // JS month: 0-indexed, so m (1-based) → new Date(y, m, 1) = next month
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** 自愈式增量更新：从缓存最新月份往后拉新数据 */
+async function syncLatestMonths(cacheData: any[]): Promise<any[]> {
+  if (!cacheData.length) return cacheData
+
+  // 找缓存中最新月份
+  const sorted = [...cacheData].sort((a, b) => String(b.month).localeCompare(String(a.month)))
+  let latestMonth = sorted[0].month || lastNMonths(1)[0]
+
+  // 逐月往前追，直到拉不到新数据
+  const currentMonth = lastNMonths(1)[0]
+  let added = 0
+
+  while (latestMonth < currentMonth) {
+    const tryMonth = nextMonth(latestMonth)
+    // 不超过当前月份（防止追到未来）
+    if (tryMonth > currentMonth) break
+
+    console.log(`[broker-golden] trying new month: ${tryMonth}`)
+    const entry = await fetchOneMonth(tryMonth)
+    if (!entry) break  // 该月还没数据，停
+
+    sorted.unshift(entry)  // 插到最前面（最新）
+    latestMonth = tryMonth
+    added++
+  }
+
+  if (added > 0) {
+    // 保持 12 个月窗口
+    const result = sorted.slice(0, 12)
+    console.log(`[broker-golden] synced ${added} new months, cache now ${result.length} months`)
+    return result
+  }
+
+  return sorted.slice(0, 12)
 }
 
 export default defineEventHandler(async (event) => {
@@ -98,6 +144,13 @@ export default defineEventHandler(async (event) => {
       cacheData = await buildGoldenCache()
       await fs.writeFile(CACHE_FILE, JSON.stringify({ data: cacheData, updatedAt: new Date().toISOString() }, null, 2))
       console.log(`[broker-golden] cache built: ${cacheData.length} months`)
+    } else {
+      // ── 自愈式增量更新：检查是否有新月份 ──
+      const synced = await syncLatestMonths(cacheData)
+      if (synced !== cacheData) {
+        cacheData = synced
+        await fs.writeFile(CACHE_FILE, JSON.stringify({ data: cacheData, updatedAt: new Date().toISOString() }, null, 2))
+      }
     }
 
     if (!cacheData.length) return { success: true, data: [], message: '暂无券商金股数据（Tushare无返回）' }
