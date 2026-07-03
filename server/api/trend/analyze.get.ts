@@ -560,10 +560,10 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
       jieqiDays: latest.jieqiDays,
       rightDays: latest.rightDays,
       spreads: {
-        '5_10': latest.spread_5_10,
-        '10_20': latest.spread_10_20,
-        '20_60': latest.spread_20_60,
-      } as { '5_10': number | null; '10_20': number | null; '20_60': number | null },
+        spread_5_10: latest.spread_5_10,
+        spread_10_20: latest.spread_10_20,
+        spread_20_60: latest.spread_20_60,
+      } as { spread_5_10: number | null; spread_10_20: number | null; spread_20_60: number | null },
       atr: latest.atr,
       atrAvg: globalAtrAvg > 0 ? globalAtrAvg : null,
       atrRatio: latest.atr != null && globalAtrAvg > 0

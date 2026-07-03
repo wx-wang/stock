@@ -48,8 +48,11 @@
       </div>
       <TrendChart
         v-else-if="detailData"
-        :data="detailData"
-        :stock="selectedStock"
+        :series="detailData.series || []"
+        :summary="detailData.summary"
+        :code="detailData.code || selectedStock?.code || ''"
+        :name="detailData.name || selectedStock?.name || ''"
+        :loading="detailLoading"
       />
     </div>
   </div>
