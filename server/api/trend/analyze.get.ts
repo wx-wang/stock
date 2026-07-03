@@ -164,7 +164,7 @@ const FLAT_OR_BELOW: ReadonlySet<string> = new Set(['平', '凉', '寒'])
 
 function computeTemperature(score: number, atrRatio: number, close: number, ma10: number | null, ma20: number | null, ma60: number | null): Temperature {
   if (score === 4) {
-    return atrRatio > 1.5 ? '沸' : '热'
+    return atrRatio > 3 ? '沸' : '热'
   }
   if (score === 3) {
     return (ma10 != null && close > ma10) ? '温偏热' : '温'
@@ -273,7 +273,7 @@ function runJieqiStateMachine(computedDays: ComputedDay[]): void {
             state.jieqiDays = 1
           }
         } else if (state.jieqi === '小暑') {
-          if (state.rightDays >= 15 && atrRatio > 1.5) {
+          if (state.rightDays >= 15 && atrRatio > 3) {
             state.jieqi = '大暑'
             state.jieqiDays = 1
           }
@@ -333,9 +333,9 @@ function generateSignals(latest: ComputedDay, atrRatio: number | null): Array<{ 
     signals.push({ type: 'buy', text: '温度=沸 → 强势持有/考虑加仓' })
   }
 
-  // ATR > 1.5 倍 + 温度=沸 → 止盈信号
-  if (atrRatio != null && atrRatio > 1.5 && latest.temperature === '沸') {
-    signals.push({ type: 'warn', text: `ATR 比值 ${atrRatio.toFixed(2)} > 1.5 且温度=沸 → 波动加剧，注意止盈` })
+  // ATR > 3 倍 + 温度=沸 → 止盈信号
+  if (atrRatio != null && atrRatio > 3 && latest.temperature === '沸') {
+    signals.push({ type: 'warn', text: `ATR 比值 ${atrRatio.toFixed(2)} > 3 且温度=沸 → 波动加剧，注意止盈` })
   }
 
   // P 接近 MA10（<2% 上方）→ 警告

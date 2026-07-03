@@ -130,7 +130,7 @@ function getTemperature(
   atrRatio: number,
 ): string {
   if (score === 4) {
-    if (isFinite(atrRatio) && atrRatio > 1.5) return '沸'
+    if (isFinite(atrRatio) && atrRatio > 3) return '沸'
     return '热'
   }
   if (score === 3) {
@@ -277,7 +277,7 @@ function runJieqiMachine(snapshots: BarSnapshot[]): JieqiState {
         isFinite(atr20avg) &&
         atr20avg > 0 &&
         isFinite(atr) &&
-        atr > atr20avg * 1.5
+        atr > atr20avg * 3
       ) {
         jieqi = '大暑'
         jieqiDays = 1
