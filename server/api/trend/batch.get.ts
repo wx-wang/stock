@@ -572,6 +572,22 @@ export default defineEventHandler(async (_event) => {
       // 节气状态机
       const { jieqi, jieqiDays, rightDays } = runJieqiMachine(snapshots)
 
+      // ── 入场/出场信号 ──
+      // 入场：昨日温偏热或温 → 今日热或沸
+      const prevSnapshot = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null
+      const yesterdayWarm = prevSnapshot
+        ? ['温偏热', '温'].includes(prevSnapshot.temp)
+        : false
+      const todayHot = ['热', '沸'].includes(lastSnapshot.temp)
+      const entrySignal = yesterdayWarm && todayHot
+
+      // 出场：昨日温及以上（沸/热/温偏热/温/温偏凉）→ 今日平及以下（平/凉/寒/冻）
+      const yesterdayWarmOrAbove = prevSnapshot
+        ? ['沸', '热', '温偏热', '温', '温偏凉'].includes(prevSnapshot.temp)
+        : false
+      const todayFlatOrBelow = ['平', '凉', '寒', '冻'].includes(lastSnapshot.temp)
+      const exitSignal = yesterdayWarmOrAbove && todayFlatOrBelow
+
       results.push({
         code: code.replace(/\.(SH|SZ)$/, ''), // 去掉后缀，前端用纯数字
         name,
@@ -593,6 +609,8 @@ export default defineEventHandler(async (_event) => {
         atr: isFinite(atr14) ? round(atr14) : 0,
         atrRatio: round(atrRatio),
         roc10: round(roc10),
+        entrySignal,
+        exitSignal,
       })
     }
 

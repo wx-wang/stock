@@ -28,6 +28,11 @@
           <option value="温">温</option>
           <option value="平及以下">平及以下</option>
         </select>
+        <select v-model="signalFilter" class="temp-select">
+          <option value="全部">全部信号</option>
+          <option value="入场">✅ 入场信号</option>
+          <option value="出场">⚠️ 出场信号</option>
+        </select>
 
         <span class="count-badge">
           共 <strong>{{ filteredStocks.length }}</strong> / {{ stocks.length }} 只
@@ -47,17 +52,18 @@
             <th class="col-jieqi">节气</th>
             <th class="col-strength">强度</th>
             <th class="col-days">右侧天数</th>
+            <th class="col-signal">信号</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="7" class="empty-cell">
+            <td colspan="8" class="empty-cell">
               <div class="loading-spinner"></div>
               <span>加载中...</span>
             </td>
           </tr>
           <tr v-else-if="filteredStocks.length === 0">
-            <td colspan="7" class="empty-cell">暂无数据</td>
+            <td colspan="8" class="empty-cell">暂无数据</td>
           </tr>
           <tr
             v-for="stock in filteredStocks"
@@ -110,6 +116,11 @@
               </span>
               <span v-else class="days-null">--</span>
             </td>
+            <td class="col-signal">
+              <span v-if="stock.entrySignal" class="signal-entry">入场</span>
+              <span v-else-if="stock.exitSignal" class="signal-exit">出场</span>
+              <span v-else class="signal-none">--</span>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -159,10 +170,18 @@ const emit = defineEmits(['select'])
 // ── Reactive state ──────────────────────────────────────────────────────
 const searchQuery = ref('')
 const tempFilter = ref('全部')
+const signalFilter = ref('全部')
 
 // ── Computed: filtered stocks ──────────────────────────────────────────
 const filteredStocks = computed(() => {
   let result = props.stocks || []
+
+  // Signal filter
+  if (signalFilter.value === '入场') {
+    result = result.filter((s) => s.entrySignal === true)
+  } else if (signalFilter.value === '出场') {
+    result = result.filter((s) => s.exitSignal === true)
+  }
 
   // Temperature filter
   if (tempFilter.value !== '全部') {
@@ -534,6 +553,31 @@ function handleSelect(stock) {
 }
 
 .days-null {
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ── Signal badges ───────────────────────────────────────────────────── */
+.signal-entry {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(76, 175, 80, 0.15);
+  color: #4CAF50;
+}
+
+.signal-exit {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(244, 67, 54, 0.15);
+  color: #F44336;
+}
+
+.signal-none {
   color: var(--text-secondary, #6b7280);
 }
 
