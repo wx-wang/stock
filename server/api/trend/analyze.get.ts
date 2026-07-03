@@ -154,27 +154,18 @@ function calcATR(rows: DayRow[]): { atr: (number | null)[]; atrAvg: number } {
   return { atr, atrAvg }
 }
 
-// ========== 温度映射 ==========
+// ========== 温度映射（6 档） ==========
 
-type Temperature =
-  | '沸' | '热' | '温偏热' | '温' | '温偏凉' | '平' | '凉' | '寒'
+type Temperature = '沸' | '热' | '温' | '平' | '凉' | '寒'
 
 /** 平及以下（用于立秋判定） */
 const FLAT_OR_BELOW: ReadonlySet<string> = new Set(['平', '凉', '寒'])
 
-function computeTemperature(score: number, atrRatio: number, close: number, ma10: number | null, ma20: number | null, ma60: number | null): Temperature {
-  if (score === 4) {
-    return atrRatio > 3 ? '沸' : '热'
-  }
-  if (score === 3) {
-    return (ma10 != null && close > ma10) ? '温偏热' : '温'
-  }
-  if (score === 2) {
-    return (ma20 != null && ma60 != null && ma20 > ma60) ? '温偏凉' : '平'
-  }
-  if (score === 1) {
-    return (ma20 != null && ma60 != null && ma20 > ma60) ? '凉' : '寒'
-  }
+function computeTemperature(score: number, atrRatio: number): Temperature {
+  if (score === 4) return atrRatio > 3 ? '沸' : '热'
+  if (score === 3) return '温'
+  if (score === 2) return '平'
+  if (score === 1) return '凉'
   return '寒'
 }
 
@@ -517,7 +508,7 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
         : 1
 
       // 温度
-      const temperature = computeTemperature(score, atrRatio, p.close, m10, m20, m60)
+      const temperature = computeTemperature(score, atrRatio)
 
       computedDays.push({
         date: formatDateDisplay(p.trade_date),

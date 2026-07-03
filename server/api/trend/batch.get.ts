@@ -110,42 +110,27 @@ function computeATR(bars: DailyBar[], n: number): number {
 
 /** 温度 → 优先级（越大越"热"），用于排序 */
 const TEMP_PRIORITY: Record<string, number> = {
-  '沸': 9,
-  '热': 8,
-  '温偏热': 7,
-  '温': 6,
-  '温偏凉': 5,
-  '平': 4,
-  '凉': 3,
-  '寒': 2,
-  '冻': 1,
+  '沸': 6,
+  '热': 5,
+  '温': 4,
+  '平': 3,
+  '凉': 2,
+  '寒': 1,
 }
 
 function getTemperature(
   score: number,
-  close: number,
-  ma10: number,
-  ma20: number,
-  ma60: number,
+  _close: number,
+  _ma10: number,
+  _ma20: number,
+  _ma60: number,
   atrRatio: number,
 ): string {
-  if (score === 4) {
-    if (isFinite(atrRatio) && atrRatio > 3) return '沸'
-    return '热'
-  }
-  if (score === 3) {
-    if (close > ma10) return '温偏热'
-    return '温'
-  }
-  if (score === 2) {
-    if (ma20 > ma60) return '温偏凉'
-    return '平'
-  }
-  if (score === 1) {
-    if (ma20 > ma60) return '凉'
-    return '寒'
-  }
-  return '冻' // score === 0
+  if (score === 4) return isFinite(atrRatio) && atrRatio > 3 ? '沸' : '热'
+  if (score === 3) return '温'
+  if (score === 2) return '平'
+  if (score === 1) return '凉'
+  return '寒' // score === 0
 }
 
 // ========== 节气状态机 ==========
@@ -573,20 +558,15 @@ export default defineEventHandler(async (_event) => {
       const { jieqi, jieqiDays, rightDays } = runJieqiMachine(snapshots)
 
       // ── 入场/出场信号 ──
-      // 入场：昨日温偏热或温 → 今日热或沸
-      const prevSnapshot = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null
-      const yesterdayWarm = prevSnapshot
-        ? ['温偏热', '温'].includes(prevSnapshot.temp)
+      // 入场：昨日温 → 今日热或沸
+      const entrySignal = prevSnapshot
+        ? prevSnapshot.temp === '温' && ['热', '沸'].includes(lastSnapshot.temp)
         : false
-      const todayHot = ['热', '沸'].includes(lastSnapshot.temp)
-      const entrySignal = yesterdayWarm && todayHot
 
-      // 出场：昨日温及以上（沸/热/温偏热/温/温偏凉）→ 今日平及以下（平/凉/寒/冻）
-      const yesterdayWarmOrAbove = prevSnapshot
-        ? ['沸', '热', '温偏热', '温', '温偏凉'].includes(prevSnapshot.temp)
+      // 出场：昨日温及以上（沸/热/温）→ 今日平及以下（平/凉/寒）
+      const exitSignal = prevSnapshot
+        ? ['沸', '热', '温'].includes(prevSnapshot.temp) && ['平', '凉', '寒'].includes(lastSnapshot.temp)
         : false
-      const todayFlatOrBelow = ['平', '凉', '寒', '冻'].includes(lastSnapshot.temp)
-      const exitSignal = yesterdayWarmOrAbove && todayFlatOrBelow
 
       results.push({
         code: code.replace(/\.(SH|SZ)$/, ''), // 去掉后缀，前端用纯数字

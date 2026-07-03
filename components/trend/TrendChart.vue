@@ -158,13 +158,10 @@ let chartInstance = null
 const TEMP_MAP = {
   '沸':   { emoji: '\u{1F30B}', color: '#FF1744' },
   '热':   { emoji: '\u{1F525}', color: '#FF5722' },
-  '温偏热': { emoji: '\u2600\uFE0F', color: '#FF9800' },
   '温':   { emoji: '\u{1F324}\uFE0F', color: '#FFC107' },
-  '温偏凉': { emoji: '\u26C5', color: '#03A9F4' },
   '平':   { emoji: '\u2601\uFE0F', color: '#9E9E9E' },
   '凉':   { emoji: '\u{1F327}\uFE0F', color: '#2196F3' },
   '寒':   { emoji: '\u2744\uFE0F', color: '#536DFE' },
-  '冻':   { emoji: '\u{1F9CA}', color: '#00BCD4' },
 }
 
 function getTempEmoji(temp) {
