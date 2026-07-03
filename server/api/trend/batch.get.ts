@@ -14,7 +14,7 @@
  *   - 最终结果：persist/trend-batch.json — 每天重建一次
  */
 
-import { getStockBasic, callTushare } from '@/server/lib/tushare'
+import { getStockBasic, callTushare, getDaily } from '@/server/lib/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 
@@ -28,6 +28,7 @@ const TRADING_DAYS = 120
 const CONCURRENT_BATCH = 5
 const ATR_PERIOD = 14
 const ATR20_PERIOD = 20
+const CANARY_CODE = '000001.SH'  // 上证指数 — 交易日历金丝雀
 
 // ========== 工具函数 ==========
 
@@ -43,6 +44,7 @@ function fmtDate8(d: Date): string {
 function todayStr(): string {
   return fmtDate8(new Date())
 }
+const today8 = todayStr
 
 /** 简单移动平均 */
 function sma(values: number[], n: number): number {
@@ -300,20 +302,44 @@ function calcStrength(roc10: number, allRocs: number[]): number {
 
 export default defineEventHandler(async (_event) => {
   try {
-    // ─── 1. 缓存检查：当天有效 ───
-    const today = todayStr()
+    // ─── 1. 缓存检查：上证指数金丝雀 ───
+    // 核心思路：上证指数的交易日历 = 全 A 股日历
+    // 上证指数有新数据 → Tushare 更新了 → 重建
+    // 上证指数没新数据 → 周末/节假日/盘中 → 用缓存
+    await fs.mkdir(PERSIST_DIR, { recursive: true })
+
     try {
-      await fs.mkdir(PERSIST_DIR, { recursive: true })
       const cacheRaw = await fs.readFile(TREND_CACHE_FILE, 'utf-8')
       const cached = JSON.parse(cacheRaw)
-      if (cached._date === today) {
-        return cached
+
+      if (cached._lastTradeDate) {
+        // 拉上证指数最近几天看有没有新交易日
+        try {
+          const canaryBars = await getDaily(CANARY_CODE, cached._lastTradeDate, today8())
+          if (canaryBars && canaryBars.length > 0) {
+            // 取出最新交易日
+            const dates = (canaryBars as any[]).map((b: any) => String(b.trade_date)).sort()
+            const latestCanaryDate = dates[dates.length - 1]
+
+            if (latestCanaryDate === cached._lastTradeDate) {
+              // 上证指数没新数据 → 用缓存
+              console.log(`[trend/batch] canary check: no new data (last=${cached._lastTradeDate}), returning cache`)
+              return cached
+            }
+
+            console.log(`[trend/batch] canary check: new data found! cached=${cached._lastTradeDate}, latest=${latestCanaryDate}`)
+          } else {
+            console.log(`[trend/batch] canary check: no bars from ${cached._lastTradeDate}, rebuilding...`)
+          }
+        } catch (canaryErr: any) {
+          console.warn(`[trend/batch] canary check failed: ${canaryErr.message}, rebuilding...`)
+        }
       }
     } catch {
-      // 缓存不存在或过期 → 重新计算
+      // 缓存不存在或损坏 → 重建
     }
 
-    console.log('[trend/batch] cache miss, building from Tushare...')
+    console.log('[trend/batch] rebuilding from Tushare...')
 
     // ─── 2. 获取股票列表 ───
     const stockBasic = await getStockBasic()
@@ -604,12 +630,13 @@ export default defineEventHandler(async (_event) => {
     })
 
     // ─── 8. 写入缓存并返回 ───
+    const lastTradeDate = tradingDates[tradingDates.length - 1] || today8()
     const resultData = {
       success: true,
       updatedAt: new Date().toISOString(),
       total: results.length,
       stocks: results,
-      _date: today,
+      _lastTradeDate: lastTradeDate,
     }
 
     await fs.writeFile(TREND_CACHE_FILE, JSON.stringify(resultData, null, 2), 'utf-8')
