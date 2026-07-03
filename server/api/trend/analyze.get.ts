@@ -5,7 +5,7 @@
  * 内存缓存 5 分钟（keyed by code），无需持久化。
  */
 
-import { getDaily } from '@/server/lib/tushare'
+import { getDaily, getIndexDaily } from '@/server/lib/tushare'
 
 // ========== 类型 ==========
 
@@ -531,6 +531,7 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
     }
 
     const tsCode = normalizeCode(rawCode)
+    const dataType = (q.type as string) === 'index' ? 'index' : 'stock'
 
     // ── 检查缓存 ──
     const cacheKey = `${tsCode}:${days}`
@@ -545,12 +546,11 @@ export default defineEventHandler(async (event): Promise<TrendResult> => {
     start.setDate(start.getDate() - days * 2) // 多取一些冗余，确保有足够交易日
     const startDate = formatDate(start)
 
-    const rawData: DayRow[] = await getDaily(
-      tsCode,
-      startDate,
-      endDate,
-      // getDaily 内部已指定 fields，这里参数会被透传；如果需要额外字段，直接信任适配器的字段配置
-    ) as any
+    const rawData: DayRow[] = (
+      dataType === 'index'
+        ? await getIndexDaily(tsCode, startDate, endDate) as any
+        : await getDaily(tsCode, startDate, endDate) as any
+    )
 
     if (rawData.length === 0) {
       return {

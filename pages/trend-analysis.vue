@@ -175,12 +175,12 @@ async function fetchBatch() {
   }
 }
 
-// 获取单只股票详情
-async function fetchDetail(stock: StockSummary) {
+// 获取单只股票详情（type: 'stock' | 'index'）
+async function fetchDetail(stock: StockSummary, type: string = 'stock') {
   detailLoading.value = true
   detailError.value = null
   try {
-    const resp = await fetch(`/api/trend/analyze?code=${encodeURIComponent(stock.code)}&days=250`)
+    const resp = await fetch(`/api/trend/analyze?code=${encodeURIComponent(stock.code)}&days=250&type=${type}`)
     const json = await resp.json()
     if (!json.success) {
       detailError.value = json.error || '获取分析数据失败'
@@ -234,7 +234,7 @@ async function handleIndexClick(idx: IndexTrend) {
   selectedStock.value = fakeStock
   view.value = 'detail'
   detailData.value = null
-  fetchDetail(fakeStock)
+  fetchDetail(fakeStock, 'index')
 }
 
 // 返回列表
