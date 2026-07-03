@@ -22,6 +22,37 @@
         :stocks="stocks"
         @select="handleSelect"
       />
+
+      <!-- 指数趋势卡片 -->
+      <div v-if="!loading && !loadError" class="indices-section">
+        <h2 class="section-title">📊 大盘指数趋势</h2>
+        <div class="indices-grid">
+          <div
+            v-for="idx in indices"
+            :key="idx.code"
+            class="index-card"
+            :class="{ 'has-error': idx.error }"
+            @click="idx.error ? null : handleIndexClick(idx)"
+          >
+            <div class="index-name">{{ idx.name }}</div>
+            <div class="index-code">{{ idx.code }}</div>
+            <div class="index-price">{{ idx.close?.toFixed(2) || '--' }}</div>
+            <div class="index-temp" v-if="!idx.error">
+              <span class="temp-badge" :style="{ color: getTempColor(idx.temperature), background: getTempBg(idx.temperature) }">
+                {{ idx.temperature || '--' }}
+              </span>
+              <span class="temp-jieqi" v-if="idx.jieqi">{{ idx.jieqi }} {{ idx.jieqiDays }}d</span>
+            </div>
+            <div class="index-spreads" v-if="!idx.error">
+              <span class="spread-label">20↔60</span>
+              <span :class="['spread-val', (idx.atrRatio ?? 0) > 3 ? 'spread-hot' : '']">
+                {{ idx.spread_20_60 > 0 ? '+' : '' }}{{ idx.spread_20_60 }}%
+              </span>
+            </div>
+            <div class="index-error" v-else>{{ idx.error }}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 详情视图 -->
@@ -99,6 +130,32 @@ const detailLoading = ref(false)
 const loadError = ref<string | null>(null)
 const detailError = ref<string | null>(null)
 
+// 指数数据
+interface IndexTrend {
+  code: string
+  name: string
+  close: number
+  score: number
+  temperature: string
+  jieqi: string | null
+  jieqiDays: number
+  spread_20_60: number
+  atrRatio: number
+  error?: string
+}
+const indices = ref<IndexTrend[]>([])
+
+// 温度辅助
+const TEMP_COLORS: Record<string, string> = {
+  '沸': '#D4380D', '热': '#E15241', '温': '#F5C842', '平': '#909399', '凉': '#40A9FF', '寒': '#3370FF',
+}
+const TEMP_BGS: Record<string, string> = {
+  '沸': 'rgba(212,56,13,0.12)', '热': 'rgba(225,82,65,0.12)', '温': 'rgba(245,200,66,0.12)',
+  '平': 'rgba(144,147,153,0.10)', '凉': 'rgba(64,169,255,0.12)', '寒': 'rgba(51,112,255,0.12)',
+}
+function getTempColor(t: string) { return TEMP_COLORS[t] || '#909399' }
+function getTempBg(t: string) { return TEMP_BGS[t] || 'rgba(144,147,153,0.1)' }
+
 // 获取批量股票列表
 async function fetchBatch() {
   loading.value = true
@@ -137,12 +194,47 @@ async function fetchDetail(stock: StockSummary) {
   }
 }
 
+// 获取指数趋势
+async function fetchIndices() {
+  try {
+    const res = await $fetch<{ success: boolean; indices: IndexTrend[] }>('/api/trend/indices')
+    indices.value = res.indices || []
+  } catch {
+    // 静默失败，指数不是核心功能
+  }
+}
+
 // 选中某只股票
 function handleSelect(stock: StockSummary) {
   selectedStock.value = stock
   view.value = 'detail'
   detailData.value = null
   fetchDetail(stock)
+}
+
+// 点击指数 → 复用现有详情视图（用 analyze API）
+async function handleIndexClick(idx: IndexTrend) {
+  // 构造一个 StockSummary 类型的对象给 fetchDetail
+  const fakeStock: StockSummary = {
+    code: idx.code,
+    name: idx.name,
+    close: idx.close,
+    score: idx.score,
+    temperature: idx.temperature,
+    jieqi: idx.jieqi,
+    jieqiDays: idx.jieqiDays,
+    rightDays: 0,
+    strength: 0,
+    spread_20_60: idx.spread_20_60,
+    atrRatio: idx.atrRatio,
+    ma5: 0, ma10: 0, ma20: 0, ma60: 0,
+    entrySignal: false, exitSignal: false,
+    tempLabel: idx.temperature,
+  }
+  selectedStock.value = fakeStock
+  view.value = 'detail'
+  detailData.value = null
+  fetchDetail(fakeStock)
 }
 
 // 返回列表
@@ -157,6 +249,7 @@ function goBack() {
 onMounted(() => {
   uiStore.setActiveNav('trend')
   fetchBatch()
+  fetchIndices()
 })
 </script>
 
@@ -312,5 +405,122 @@ onMounted(() => {
   font-size: 14px;
   color: var(--text-secondary);
   max-width: 400px;
+}
+
+/* ── 指数趋势卡片 ─────────────────────────────────── */
+.indices-section {
+  margin-top: 28px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.indices-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.index-card {
+  background: var(--bg-card, rgba(18, 22, 30, 0.6));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.index-card:hover {
+  border-color: var(--color-accent, #4a9eff);
+  transform: translateY(-2px);
+}
+
+.index-card.has-error {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.index-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.index-code {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: monospace;
+  margin-bottom: 8px;
+}
+
+.index-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  tabular-nums: fixed;
+}
+
+.index-temp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.temp-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.temp-jieqi {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.index-spreads {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.spread-label {
+  color: var(--text-secondary);
+}
+
+.spread-val {
+  color: #4CAF50;
+  font-weight: 600;
+}
+
+.spread-val.spread-hot {
+  color: #D4380D;
+}
+
+.index-error {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .indices-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .indices-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>
