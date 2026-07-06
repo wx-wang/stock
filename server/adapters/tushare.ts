@@ -111,6 +111,20 @@ export function getIndexDaily(tsCode: string, startDate: string, endDate: string
     'ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount', { ttl: 5 * 60 * 1000 })
 }
 
+/** 中债国债收益率曲线（yc_cb），curve_term=10 即 10年期 */
+export function getBondYield(startDate: string, endDate: string): Promise<any[]> {
+  return callTushare('yc_cb',
+    { ts_code: '1001.CB', curve_type: '0', start_date: startDate, end_date: endDate, curve_term: 10 },
+    'trade_date,curve_term,yield',
+    { ttl: 12 * 3600 * 1000 })  // 12h 缓存，国债日频足够
+}
+
+/** 全市场 daily_basic（不传 ts_code = 取全量），用于加权 PE */
+export function getDailyBasicAll(tradeDate: string): Promise<any[]> {
+  return callTushare('daily_basic', { trade_date: tradeDate },
+    'ts_code,trade_date,close,pe_ttm,total_mv', { ttl: 30 * 60 * 1000 })  // 30min TTL
+}
+
 export function getIndexClassify(level = 'L2', src = 'SW2021'): Promise<any[]> {
   return callTushare('index_classify', { level, src },
     'index_code,industry_name,level,industry_code,is_pub,parent_code,src', { ttl: 24 * 3600 * 1000 })

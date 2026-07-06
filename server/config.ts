@@ -8,6 +8,14 @@
  *   - 换 Tushare token  → 改 TUSHARE_TOKEN
  *   - 换 DeepSeek key   → 改 DEEPSEEK_API_KEY
  *   - 换代理地址       → 改 TUSHARE_URL
+ *
+ * Tushare token 更新方法（3 步）：
+ *   1. 改本文件 TUSHARE_TOKEN 默认值
+ *   2. 同步改 .env.example
+ *   3. 云端执行：
+ *      echo 'TUSHARE_TOKEN=新token' > /home/stock/.env
+ *      echo 'TUSHARE_URL=http://lianghua.nanyangqiankun.top' >> /home/stock/.env
+ *      pm2 restart stock
  */
 
 export const TUSHARE_URL = process.env.TUSHARE_URL || 'http://lianghua.nanyangqiankun.top'
