@@ -40,7 +40,11 @@
       </div>
 
       <!-- 折线图 -->
+      <div v-if="posBuilding" class="building-hint">
+        ⏳ 历史数据后台构建中，预计 1-2 分钟完成（当前点位已就绪）
+      </div>
       <SpreadChart
+        v-if="posHistory.length > 0"
         :history="posHistory"
         :thresholds="posThresholds"
       />
@@ -85,6 +89,7 @@ interface PositionData {
 
 const posLoading = ref(false)
 const posSuccess = ref(false)
+const posBuilding = ref(false)
 const posError = ref('')
 const posCurrent = ref<PositionData['current']>({ date: '', ep: 0, bond10y: 0, spread: 0, pe: 0, percentile: 0 })
 const posMedian = ref<PositionData['median']>({ date: '', ep: 0, bond10y: 0, spread: 0, pe: 0 })
@@ -93,22 +98,54 @@ const posZoneLabel = ref('')
 const posHistory = ref<MonthPoint[]>([])
 const posThresholds = ref({ opportunity: 3, overvalued: 1.5, max: 5, min: 0 })
 
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
 async function fetchPosition() {
   posLoading.value = true
   try {
     const resp = await fetch('/api/market/position')
-    const json = await resp.json() as PositionData
+    const json = await resp.json() as PositionData & { building?: boolean }
     if (!json.success) {
       posError.value = '数据不足，等待更多交易日数据累积'
       return
     }
     posSuccess.value = true
     posCurrent.value = json.current
-    posMedian.value = json.median
-    posZone.value = json.zone
-    posZoneLabel.value = json.zoneLabel
     posHistory.value = json.history
-    posThresholds.value = json.thresholds
+
+    if (json.building) {
+      // 后台构建中，轮询等完整数据
+      posBuilding.value = true
+      posZone.value = 'neutral'
+      posZoneLabel.value = '加载中...'
+      posMedian.value = null as any
+      posThresholds.value = { opportunity: 3, overvalued: 1.5, max: 5, min: 0 }
+      if (!pollTimer) {
+        pollTimer = setInterval(async () => {
+          try {
+            const r2 = await fetch('/api/market/position')
+            const j2 = await r2.json() as PositionData & { building?: boolean }
+            if (!j2.building && j2.success && j2.history.length > 1) {
+              posBuilding.value = false
+              posCurrent.value = j2.current
+              posMedian.value = j2.median
+              posZone.value = j2.zone
+              posZoneLabel.value = j2.zoneLabel
+              posHistory.value = j2.history
+              posThresholds.value = j2.thresholds
+              if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+            }
+          } catch { /* keep polling */ }
+        }, 8000)
+        setTimeout(() => { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; posBuilding.value = false } }, 5 * 60 * 1000) // 5 min timeout
+      }
+    } else {
+      posBuilding.value = false
+      posMedian.value = json.median
+      posZone.value = json.zone
+      posZoneLabel.value = json.zoneLabel
+      posThresholds.value = json.thresholds
+    }
   } catch (e: any) {
     posError.value = e.message || '网络错误'
   } finally {
@@ -189,6 +226,17 @@ onMounted(fetchPosition)
 }
 .error-msg {
   padding: 20px; text-align: center; color: #F44336; font-size: 14px;
+}
+
+.building-hint {
+  text-align: center;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #FFB74D;
+  background: rgba(255,183,77,0.06);
+  border: 1px solid rgba(255,183,77,0.15);
+  border-radius: 8px;
+  margin-bottom: 12px;
 }
 
 /* ── 占位 ── */
