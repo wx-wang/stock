@@ -11,7 +11,7 @@
  */
 
 export const TUSHARE_URL = process.env.TUSHARE_URL || 'http://lianghua.nanyangqiankun.top'
-export const TUSHARE_TOKEN = process.env.TUSHARE_TOKEN || '你的Tushare_token'
+export const TUSHARE_TOKEN = process.env.TUSHARE_TOKEN || '158637460d4519a4f1a8d8b49ed991feabfdcd3b55a1cc41631c54ea19ce'
 
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '你的DeepSeek_API_Key'
 export const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions'
