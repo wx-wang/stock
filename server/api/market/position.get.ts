@@ -89,25 +89,26 @@ function genDates(d: Date): string[] {
 async function buildFullCache() {
   const end = new Date()
   const start = new Date(end)
-  start.setMonth(start.getMonth() - 24)  // 2 年
+  start.setMonth(start.getMonth() - 36)  // 3 年（尽量宽）
 
-  // 拉 2 年国债（一次调用）
+  // 拉国债（一次调用，尽量宽范围）
   const bondRaw = await getBondYield(fmtYm(start) + '01', fmtYm(end) + '30') as any[]
   const bondMap = new Map<string, number>()
   for (const row of bondRaw) {
     const dt = String(row.trade_date || '').slice(0, 6)
     if (!bondMap.has(dt)) bondMap.set(dt, Number(row.yield) || 0)
   }
+  const bondMonths = [...bondMap.keys()].sort()
+  console.log(`[market/position] bond data: ${bondMonths.length} months, range=${bondMonths[0]}~${bondMonths[bondMonths.length - 1]}`)
 
-  // 生成月份列表
-  const months: string[] = []
-  const mc = new Date(start)
-  mc.setDate(1)
-  while (mc <= end) { months.push(fmtYm(mc)); mc.setMonth(mc.getMonth() + 1) }
+  if (bondMonths.length < 2) {
+    console.warn('[market/position] too few bond months, aborting history build')
+    return
+  }
 
-  // 逐月拉 PE（每个 cron 月只试 2 个日期）
+  // 只拉有国债数据的月份的 PE（避免浪费 API 调用）
   const pePoints: Array<{ date: string; pe: number }> = []
-  for (const ym of months) {
+  for (const ym of bondMonths) {
     try {
       for (const td of [firstOfMonth(ym), midOfMonth(ym)]) {
         const items = await getDailyBasicAll(td) as any[]
@@ -117,8 +118,9 @@ async function buildFullCache() {
           .filter((s: any) => s.peTtm > 0 && s.totalMv > 0)
         if (stocks.length > 100) { pePoints.push({ date: ym, pe: computeWeightedPE(stocks) }); break }
       }
-    } catch { /* skip this month */ }
+    } catch { /* skip */ }
   }
+  console.log(`[market/position] PE data: ${pePoints.length} months`)
 
   // 合并
   const history: MonthPoint[] = []

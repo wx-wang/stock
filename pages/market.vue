@@ -44,7 +44,7 @@
         ⏳ 历史数据后台构建中，预计 1-2 分钟完成（当前点位已就绪）
       </div>
       <SpreadChart
-        v-if="posHistory.length > 0"
+        v-if="posHistory.length >= 2"
         :history="posHistory"
         :thresholds="posThresholds"
       />
