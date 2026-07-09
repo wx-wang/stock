@@ -1,17 +1,14 @@
 /**
  * GET /api/market/fear-greed — 自建恐惧贪婪指数 (0-100)
  *
- * 6 个独立维度，每个映射到 0-100 分：
- *   1. 涨跌比 (25%)     — breadth API（✅ 已验证）
- *   2. 涨停跌停比 (20%) — breadth API（✅ 已验证）
- *   3. 北向净流向 (15%) — Tushare moneyflow_hsgt，失败=50
- *   4. 融资变化 (15%)   — Tushare margin，失败=50
- *   5. 市场宽度 (15%)   — 复用 index-kline API 获取 HS300 行情计算 MA20
- *   6. 量能变化 (10%)   — 同上，成交额/20日均量
+ * 4 个独立维度，全部从已有数据源计算，无需 Tushare 额外权限：
+ *   1. 涨跌比 (35%)      — breadth API → 上涨家数占比
+ *   2. 涨停跌停比 (25%)  — breadth API → 涨停占(涨停+跌停)比
+ *   3. 沪深300涨跌 (25%) — indices-panel 缓存 → (close-preClose)/preClose 映射到 0-100
+ *   4. 成交额 (15%)      — indices-panel 缓存 → HS300 成交额绝对水平
  *
- * 缓存：5 分钟磁盘
+ * 缓存：5 分钟磁盘（仅用于避免同次页面刷新重复计算）
  */
-import { getMoneyflowHsgt, getMargin } from '@/server/adapters/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { PERSIST_DIR } from '../../config'
@@ -19,8 +16,8 @@ import { PERSIST_DIR } from '../../config'
 const CACHE_FILE = path.join(PERSIST_DIR, 'market-fear-greed.json')
 const CACHE_TTL = 5 * 60 * 1000
 
-function fmtDate(d: Date): string {
-  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`
+function clamp100(v: number): number {
+  return Math.round(Math.max(0, Math.min(100, v)))
 }
 
 export default defineEventHandler(async () => {
@@ -32,105 +29,52 @@ export default defineEventHandler(async () => {
     }
 
     const now = new Date()
-    const today = fmtDate(now)
-    const d1 = new Date(now); d1.setDate(d1.getDate() - 1)
-    const d5 = new Date(now); d5.setDate(d5.getDate() - 5)
-    const d35 = new Date(now); d35.setDate(d35.getDate() - 35)
+    const today = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`
 
-    // ── 维度 1+2: 涨跌比 + 涨停跌停比（复用 breadth API） ──
+    // ── 维度 1+2: 涨跌比 + 涨停跌停比 ──
     let breadth = 50, limitScore = 50
     try {
       const baseUrl = process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
       const bResp = await fetch(baseUrl + '/api/market/breadth')
       const b = await bResp.json()
       if (b?.success && b.total > 0) {
-        breadth = Math.round((b.up / b.total) * 100)
+        breadth = clamp100((b.up / b.total) * 100)
         const totalLimits = b.upLimit + b.dnLimit
-        limitScore = totalLimits === 0 ? 50 : Math.round((b.upLimit / totalLimits) * 100)
+        limitScore = totalLimits === 0 ? 50 : clamp100((b.upLimit / totalLimits) * 100)
       }
     } catch (e: any) {
-      console.error('[fear-greed] breadth fetch failed:', e.message)
+      console.error('[fear-greed] breadth:', e.message)
     }
 
-    // ── 维度 3: 北向资金 ──
-    let northScore = 50
+    // ── 维度 3+4: 沪深300涨跌 + 成交额（读 indices-panel 缓存） ──
+    let hs300Score = 50, volScore = 50
     try {
-      const hsgt = await getMoneyflowHsgt(fmtDate(d5), today)
-      if (hsgt.length > 0) {
-        const latest = hsgt[hsgt.length - 1]
-        const netYuan = (Number(latest.north_money) || 0) - (Number(latest.south_money) || 0)
-        const netYi = netYuan / 10000
-        northScore = Math.round(Math.max(0, Math.min(100, 50 + netYi)))
-        console.log(`[fear-greed] north flow: ${netYi.toFixed(1)}亿 → ${northScore}`)
-      }
-    } catch (e: any) {
-      console.error('[fear-greed] moneyflow_hsgt failed:', e.message)
-    }
+      const idxRaw = await fs.readFile(path.join(PERSIST_DIR, 'market-indices.json'), 'utf-8').catch(() => null)
+      if (idxRaw) {
+        const hs300 = JSON.parse(idxRaw).indices?.find((i: any) => i.code === '000300.SH')
+        if (hs300?.close > 0) {
+          // 今日涨跌幅
+          const preClose = Number(hs300.preClose) || hs300.close
+          const pctChg = preClose > 0 ? ((hs300.close - preClose) / preClose) * 100 : 0
+          hs300Score = clamp100(50 + pctChg * 25)
+          console.log(`[fear-greed] HS300 ${pctChg > 0 ? '+' : ''}${pctChg.toFixed(2)}% → ${hs300Score}`)
 
-    // ── 维度 4: 融资余额变化 ──
-    let marginScore = 50
-    try {
-      const [todayMargin, prevMargin] = await Promise.all([
-        getMargin(today),
-        getMargin(fmtDate(d1)),
-      ])
-      if (todayMargin.length > 0 && prevMargin.length > 0) {
-        const todayBal = Number(todayMargin[0].rzye) || 0
-        const prevBal = Number(prevMargin[0].rzye) || todayBal
-        const chgPct = prevBal > 0 ? ((todayBal - prevBal) / prevBal) * 100 : 0
-        marginScore = Math.round(Math.max(0, Math.min(100, 50 + chgPct * 10)))
-        console.log(`[fear-greed] margin: ${chgPct.toFixed(2)}% → ${marginScore}`)
-      }
-    } catch (e: any) {
-      console.error('[fear-greed] margin failed:', e.message)
-    }
-
-    // ── 维度 5+6: 市场宽度 + 量能（读 cached indices-panel 获取 HS300 数据） ──
-    let marketWidth = 50, volumeScore = 50
-    try {
-      const idxCacheRaw = await fs.readFile(path.join(PERSIST_DIR, 'market-indices.json'), 'utf-8').catch(() => null)
-      if (idxCacheRaw) {
-        const idxCache = JSON.parse(idxCacheRaw)
-        const hs300 = idxCache.indices?.find((i: any) => i.code === '000300.SH')
-        if (hs300 && hs300.close > 0) {
-          // 从历史 fear-greed 缓存推算近似 MA20
-          const fgHistory: Array<{ date: string; hs300Close: number }> = []
-          if (cached) {
-            const old = JSON.parse(cached) as any
-            for (const h of old.hs300History || []) { fgHistory.push(h) }
-          }
-          if (fgHistory.length === 0 || fgHistory[fgHistory.length-1]?.date !== today) {
-            fgHistory.push({ date: today, hs300Close: hs300.close })
-            if (fgHistory.length > 22) fgHistory.shift()
-          }
-          if (fgHistory.length >= 5) {
-            const recentCloses = fgHistory.slice(-Math.min(20, fgHistory.length)).map((h: any) => h.hs300Close)
-            const ma20 = recentCloses.reduce((a: number, b: number) => a + b, 0) / recentCloses.length
-            const ratio = hs300.close / ma20
-            marketWidth = Math.round(Math.max(0, Math.min(100, 50 + (ratio - 1) * 200)))
-            console.log(`[fear-greed] HS300 close=${hs300.close} MA~${recentCloses.length}=${ma20.toFixed(1)} ratio=${ratio.toFixed(3)} → ${marketWidth}`)
-          }
-
-          // 量能：从 indices-panel 读 HS300 成交额，比前日
-          if (hs300.amount > 0) {
-            const prevClose = hs300.preClose || hs300.close
-            volumeScore = Math.round(Math.max(0, Math.min(100, 50 + (hs300.amount / 1e10 - 3) * 10)))
-            console.log(`[fear-greed] HS300 amount=${(hs300.amount/1e8).toFixed(0)}亿 → ${volumeScore}`)
-          }
+          // 成交额（沪深300日均约 3000亿，以此为基准 50 分，每多 500 亿 +10 分）
+          const amtYi = (Number(hs300.amount) || 0) / 1e8
+          volScore = clamp100(50 + (amtYi - 3000) / 500 * 10)
+          console.log(`[fear-greed] HS300 成交额 ${amtYi.toFixed(0)}亿 → ${volScore}`)
         }
       }
     } catch (e: any) {
-      console.error('[fear-greed] indices-panel read failed:', e.message || e)
+      console.error('[fear-greed] indices-panel read:', e.message)
     }
 
     // ── 加权合成 ──
     const index = Math.round(
-      breadth      * 0.25 +
-      limitScore   * 0.20 +
-      northScore   * 0.15 +
-      marginScore  * 0.15 +
-      marketWidth  * 0.15 +
-      volumeScore  * 0.10
+      breadth     * 0.35 +
+      limitScore  * 0.25 +
+      hs300Score  * 0.25 +
+      volScore    * 0.15
     )
 
     let level = 'neutral', label = '中性'
@@ -142,34 +86,17 @@ export default defineEventHandler(async () => {
 
     // ── 历史 ──
     let history: Array<{ date: string; index: number }> = []
-    let hs300History: Array<{ date: string; hs300Close: number }> = []
     try {
-      const old = JSON.parse(await fs.readFile(CACHE_FILE, 'utf-8'))
-      history = old.history || []
-      hs300History = old.hs300History || []
+      history = JSON.parse(await fs.readFile(CACHE_FILE, 'utf-8')).history || []
     } catch {}
     const last = history[history.length - 1]
     if (!last || last.date !== today) history.push({ date: today, index })
     if (history.length > 90) history = history.slice(-90)
-    // 保留 HS300 收盘价历史（最多 22 天）
-    const lastHS = hs300History[hs300History.length - 1]
-    if (!lastHS || lastHS.date !== today) {
-      // 从 indices-panel 缓存读 HS300 close
-      try {
-        const idxCacheRaw = await fs.readFile(path.join(PERSIST_DIR, 'market-indices.json'), 'utf-8').catch(() => null)
-        if (idxCacheRaw) {
-          const idxCache = JSON.parse(idxCacheRaw)
-          const hs300 = idxCache.indices?.find((i: any) => i.code === '000300.SH')
-          if (hs300?.close > 0) hs300History.push({ date: today, hs300Close: hs300.close })
-        }
-      } catch {}
-      if (hs300History.length > 22) hs300History = hs300History.slice(-22)
-    }
 
     const result = {
       success: true, index, label, level,
-      components: { breadth, limitRatio: limitScore, northFlow: northScore, marginChange: marginScore, marketWidth, volumeRatio: volumeScore },
-      history, hs300History, _ts: Date.now(),
+      components: { breadth, limitRatio: limitScore, hs300Chg: hs300Score, volume: volScore },
+      history, _ts: Date.now(),
     }
 
     await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true }).catch(() => {})
