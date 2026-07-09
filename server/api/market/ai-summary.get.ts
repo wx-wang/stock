@@ -34,8 +34,9 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === '你的DeepSeek_API_Key') {
-      return { headline: 'AI 未配置', narrative: '请在 config.ts 中设置 DEEPSEEK_API_KEY', breadth: '', trendAlignment: '', riskFlags: [], position: '', _ts: Date.now() }
+    const apiKey = process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY
+    if (!apiKey || apiKey === '你的DeepSeek_API_Key') {
+      return { headline: 'AI 未配置', narrative: '请在 .env 中设置 DEEPSEEK_API_KEY', breadth: '', trendAlignment: '', riskFlags: [], position: '', _ts: Date.now() }
     }
 
     // 获取市场数据上下文
@@ -47,7 +48,7 @@ export default defineEventHandler(async (event) => {
     // 调用 DeepSeek
     const resp = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: DEEPSEEK_MODEL,
         messages: [
