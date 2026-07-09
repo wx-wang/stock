@@ -2,20 +2,16 @@
  * GET /api/market/fear-greed — 自建恐惧贪婪指数 (0-100)
  *
  * 6 个独立维度，每个映射到 0-100 分：
- *
- *   1. 涨跌比 (25%)     — up/total × 100  直接使用，无需额外公式
- *   2. 涨停跌停比 (20%) — 涨停数/(涨停+跌停) × 100
- *   3. 北向净流向 (15%) — 基准 50 分，每净流入/流出 1 亿 ±1 分，[-50,+50]亿映射 [0,100]
- *   4. 融资变化 (15%)   — 基准 50 分，每 ±0.1% ±1 分，[-5%,+5%]映射 [0,100]
- *   5. 市场宽度 (15%)   — 沪深 300 中 close > MA20 的比例（用涨跌比×1.1 cap 100 近似）
- *   6. 量能变化 (10%)   — 沪深 300 成交额 / 20日均量，1.0x=50分，2.0x=100分，0.5x=0分
- *
- * 注意：维度 5/6 的精确计算需要 daily_basic 全量数据（成本太高），
- *       这里用沪深 300 的日行情做近似（沪深 300 代表市场整体）。
+ *   1. 涨跌比 (25%)     — breadth API（✅ 已验证）
+ *   2. 涨停跌停比 (20%) — breadth API（✅ 已验证）
+ *   3. 北向净流向 (15%) — Tushare moneyflow_hsgt，失败=50
+ *   4. 融资变化 (15%)   — Tushare margin，失败=50
+ *   5. 市场宽度 (15%)   — 复用 index-kline API 获取 HS300 行情计算 MA20
+ *   6. 量能变化 (10%)   — 同上，成交额/20日均量
  *
  * 缓存：5 分钟磁盘
  */
-import { getLimitList, getMoneyflowHsgt, getMargin, getIndexDaily } from '@/server/adapters/tushare'
+import { getMoneyflowHsgt, getMargin } from '@/server/adapters/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { PERSIST_DIR } from '../../config'
@@ -39,42 +35,39 @@ export default defineEventHandler(async () => {
     const today = fmtDate(now)
     const d1 = new Date(now); d1.setDate(d1.getDate() - 1)
     const d5 = new Date(now); d5.setDate(d5.getDate() - 5)
-    const d30 = new Date(now); d30.setDate(d30.getDate() - 40) // 40 天覆盖节假日
+    const d35 = new Date(now); d35.setDate(d35.getDate() - 35)
 
-    // ── 1. 涨跌比 ──
-    // 从 breadth API 复用（已缓存，不需要额外调用）
+    // ── 维度 1+2: 涨跌比 + 涨停跌停比（复用 breadth API） ──
     let breadth = 50, limitScore = 50
     try {
       const baseUrl = process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
       const bResp = await fetch(baseUrl + '/api/market/breadth')
       const b = await bResp.json()
       if (b?.success && b.total > 0) {
-        // 涨跌比：直接就是 up% = 0-100 分
         breadth = Math.round((b.up / b.total) * 100)
-        // 涨停跌停比
         const totalLimits = b.upLimit + b.dnLimit
         limitScore = totalLimits === 0 ? 50 : Math.round((b.upLimit / totalLimits) * 100)
       }
-    } catch { breadth = 52; limitScore = 55 }
+    } catch (e: any) {
+      console.error('[fear-greed] breadth fetch failed:', e.message)
+    }
 
-    // ── 2. 北向资金 ──
-    // 基准 50 分，净流入 50 亿 = 100 分，净流出 50 亿 = 0 分
+    // ── 维度 3: 北向资金 ──
     let northScore = 50
     try {
       const hsgt = await getMoneyflowHsgt(fmtDate(d5), today)
       if (hsgt.length > 0) {
         const latest = hsgt[hsgt.length - 1]
-        // moneyflow_hsgt: north_money 是北向买入额(万元), south_money 是南向买入额
-        // 净北向 ≈ north_money - south_money
-        const netYuan = (Number(latest.north_money) || 0) - (Number(latest.south_money) || 0) // 万元
-        const netYi = netYuan / 10000 // 转亿
-        // 每 1 亿净流入 = +1 分，从 50 出发
+        const netYuan = (Number(latest.north_money) || 0) - (Number(latest.south_money) || 0)
+        const netYi = netYuan / 10000
         northScore = Math.round(Math.max(0, Math.min(100, 50 + netYi)))
+        console.log(`[fear-greed] north flow: ${netYi.toFixed(1)}亿 → ${northScore}`)
       }
-    } catch {}
+    } catch (e: any) {
+      console.error('[fear-greed] moneyflow_hsgt failed:', e.message)
+    }
 
-    // ── 3. 融资余额变化 ──
-    // 基准 50 分，每 0.1% 变化 = ±1 分（5% 变化 = 100 或 0）
+    // ── 维度 4: 融资余额变化 ──
     let marginScore = 50
     try {
       const [todayMargin, prevMargin] = await Promise.all([
@@ -85,39 +78,41 @@ export default defineEventHandler(async () => {
         const todayBal = Number(todayMargin[0].rzye) || 0
         const prevBal = Number(prevMargin[0].rzye) || todayBal
         const chgPct = prevBal > 0 ? ((todayBal - prevBal) / prevBal) * 100 : 0
-        // 50 + chgPct/0.1，即每 0.1% 变化+1分
         marginScore = Math.round(Math.max(0, Math.min(100, 50 + chgPct * 10)))
+        console.log(`[fear-greed] margin: ${chgPct.toFixed(2)}% → ${marginScore}`)
       }
-    } catch {}
+    } catch (e: any) {
+      console.error('[fear-greed] margin failed:', e.message)
+    }
 
-    // ── 4. 市场宽度（用沪深 300 的 MA20 以上比例近似） ──
-    // 用沪深 300 指数 close 与 MA20 的关系做快速近似
-    let marketWidth = 50
+    // ── 维度 5+6: 市场宽度 + 量能（复用 index-kline API，已验证可用） ──
+    let marketWidth = 50, volumeScore = 50
     try {
-      const hs300 = await getIndexDaily('000300.SH', fmtDate(d30), today)
-      if (hs300.length >= 21) {
-        const closes = hs300.map((r: any) => Number(r.close) || 0)
+      const baseUrl = process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      const resp = await fetch(`${baseUrl}/api/market/index-kline?code=000300.SH&days=30`)
+      const data = await resp.json()
+      if (data?.kline?.length >= 21) {
+        const kline = data.kline
+        const closes = kline.map((r: any) => Number(r.close) || 0)
+        const amounts = kline.map((r: any) => Number(r.amount) || 0)
+
+        // 市场宽度：close vs MA20
         const ma20 = closes.slice(-20).reduce((a: number, b: number) => a + b, 0) / 20
         const latestClose = closes[closes.length - 1]
-        // close > MA20 → 倾向乐观，缩放映射到 20-80
-        const ratio = latestClose / (ma20 || 1) // >1 = 高于均线
+        const ratio = latestClose / (ma20 || 1)
         marketWidth = Math.round(Math.max(0, Math.min(100, 50 + (ratio - 1) * 200)))
-      }
-    } catch {}
+        console.log(`[fear-greed] HS300 close/MA20: ${ratio.toFixed(3)} → ${marketWidth}`)
 
-    // ── 5. 量能变化（沪深 300 成交额 / 20日均量） ──
-    let volumeScore = 50
-    try {
-      const hs300 = await getIndexDaily('000300.SH', fmtDate(d30), today)
-      if (hs300.length >= 21) {
-        const amounts = hs300.map((r: any) => Number(r.amount) || 0)
-        const avg20 = amounts.slice(-21, -1).reduce((a: number, b: number) => a + b, 0) / 20
+        // 量能：成交额 vs 20日均量
+        const avg20Amt = amounts.slice(-21, -1).reduce((a: number, b: number) => a + b, 0) / 20
         const latestAmt = amounts[amounts.length - 1]
-        const ratio = avg20 > 0 ? latestAmt / avg20 : 1
-        // 1.0x = 50分, 0.5x = 0分, 2.0x = 100分
-        volumeScore = Math.round(Math.max(0, Math.min(100, (ratio - 0.5) / 1.5 * 100)))
+        const volRatio = avg20Amt > 0 ? latestAmt / avg20Amt : 1
+        volumeScore = Math.round(Math.max(0, Math.min(100, (volRatio - 0.5) / 1.5 * 100)))
+        console.log(`[fear-greed] HS300 vol/avg: ${volRatio.toFixed(2)}x → ${volumeScore}`)
       }
-    } catch {}
+    } catch (e: any) {
+      console.error('[fear-greed] HS300 kline fetch failed:', e.message)
+    }
 
     // ── 加权合成 ──
     const index = Math.round(
@@ -156,7 +151,7 @@ export default defineEventHandler(async () => {
     await fs.writeFile(CACHE_FILE, JSON.stringify(result)).catch(() => {})
     return result
   } catch (e: any) {
-    console.error('[fear-greed]', e.message)
+    console.error('[fear-greed] fatal:', e.message)
     return { success: false, index: 50, label: '错误', level: 'neutral', components: {}, history: [] }
   }
 })

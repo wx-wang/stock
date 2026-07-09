@@ -290,10 +290,23 @@ export function getMargin(tradeDate: string): Promise<any[]> {
     'trade_date,rzye,rqye,rzmre,rqmcl', { ttl: 4 * 3600 * 1000 })
 }
 
-/** 沪深港通资金流 */
+/** 沪深港通资金流（Tushare moneyflow_hsgt 参数是 trade_date 单日） */
 export function getMoneyflowHsgt(startDate: string, endDate: string): Promise<any[]> {
-  return callTushare('moneyflow_hsgt', { start_date: startDate, end_date: endDate },
-    'trade_date,north_money,south_money', { ttl: 4 * 3600 * 1000 })
+  // moneyflow_hsgt API 只接受 trade_date 单日参数，逐日拉取后合并
+  return (async () => {
+    const start = new Date(Number(startDate.slice(0,4)), Number(startDate.slice(4,6))-1, Number(startDate.slice(6,8)))
+    const end = new Date(Number(endDate.slice(0,4)), Number(endDate.slice(4,6))-1, Number(endDate.slice(6,8)))
+    const results: any[] = []
+    const d = new Date(start)
+    while (d <= end) {
+      const dt = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`
+      const items = await callTushare('moneyflow_hsgt', { trade_date: dt },
+        'trade_date,north_money,south_money', { ttl: 4 * 3600 * 1000 })
+      results.push(...items)
+      d.setDate(d.getDate() + 1)
+    }
+    return results
+  })()
 }
 
 /** 全市场日行情（不传 ts_code = 全量），用于涨跌家数 */
