@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 export const useUiStore = defineStore('ui', () => {
   const isDark = ref<boolean>(true)
-  const activeNav = ref<string>('portfolio')
+  const activeNav = ref<string>('screener')
   const viewMode = ref<'table' | 'card'>('table')
   const aiPanelExpanded = ref<boolean>(false)
 
