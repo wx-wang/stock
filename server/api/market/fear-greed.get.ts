@@ -11,7 +11,7 @@
  *
  * 缓存：5 分钟磁盘
  */
-import { getMoneyflowHsgt, getMargin, getIndexDaily } from '@/server/adapters/tushare'
+import { getMoneyflowHsgt, getMargin } from '@/server/adapters/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { PERSIST_DIR } from '../../config'
@@ -85,31 +85,42 @@ export default defineEventHandler(async () => {
       console.error('[fear-greed] margin failed:', e.message)
     }
 
-    // ── 维度 5+6: 市场宽度 + 量能（直调 Tushare index_daily 获取 HS300 行情） ──
+    // ── 维度 5+6: 市场宽度 + 量能（读 cached indices-panel 获取 HS300 数据） ──
     let marketWidth = 50, volumeScore = 50
     try {
-      const kline = await getIndexDaily('000300.SH', fmtDate(d35), today)
-      if (kline && kline.length >= 21) {
-        const closes = kline.map((r: any) => Number(r.close) || 0).filter((c: number) => c > 0)
-        const amounts = kline.map((r: any) => Number(r.amount) || 0)
+      const idxCacheRaw = await fs.readFile(path.join(PERSIST_DIR, 'market-indices.json'), 'utf-8').catch(() => null)
+      if (idxCacheRaw) {
+        const idxCache = JSON.parse(idxCacheRaw)
+        const hs300 = idxCache.indices?.find((i: any) => i.code === '000300.SH')
+        if (hs300 && hs300.close > 0) {
+          // 从历史 fear-greed 缓存推算近似 MA20
+          const fgHistory: Array<{ date: string; hs300Close: number }> = []
+          if (cached) {
+            const old = JSON.parse(cached) as any
+            for (const h of old.hs300History || []) { fgHistory.push(h) }
+          }
+          if (fgHistory.length === 0 || fgHistory[fgHistory.length-1]?.date !== today) {
+            fgHistory.push({ date: today, hs300Close: hs300.close })
+            if (fgHistory.length > 22) fgHistory.shift()
+          }
+          if (fgHistory.length >= 5) {
+            const recentCloses = fgHistory.slice(-Math.min(20, fgHistory.length)).map((h: any) => h.hs300Close)
+            const ma20 = recentCloses.reduce((a: number, b: number) => a + b, 0) / recentCloses.length
+            const ratio = hs300.close / ma20
+            marketWidth = Math.round(Math.max(0, Math.min(100, 50 + (ratio - 1) * 200)))
+            console.log(`[fear-greed] HS300 close=${hs300.close} MA~${recentCloses.length}=${ma20.toFixed(1)} ratio=${ratio.toFixed(3)} → ${marketWidth}`)
+          }
 
-        const ma20 = closes.slice(-20).reduce((a: number, b: number) => a + b, 0) / 20
-        const latestClose = closes[closes.length - 1]
-        const ratio = latestClose / (ma20 || 1)
-        marketWidth = Math.round(Math.max(0, Math.min(100, 50 + (ratio - 1) * 200)))
-        console.log(`[fear-greed] HS300 close=${latestClose} MA20=${ma20.toFixed(1)} ratio=${ratio.toFixed(3)} → ${marketWidth}`)
-
-        // 量能
-        const avg20Amt = amounts.filter((a: number) => a > 0).slice(-21, -1).reduce((a: number, b: number) => a + b, 0) / 20
-        const latestAmt = amounts[amounts.length - 1]
-        const volRatio = avg20Amt > 0 ? latestAmt / avg20Amt : 1
-        volumeScore = Math.round(Math.max(0, Math.min(100, (volRatio - 0.5) / 1.5 * 100)))
-        console.log(`[fear-greed] HS300 amount latest=${latestAmt} avg20=${avg20Amt.toFixed(1)} ratio=${volRatio.toFixed(2)} → ${volumeScore}`)
-      } else {
-        console.warn(`[fear-greed] index_daily returned ${kline?.length || 0} rows for 000300.SH`)
+          // 量能：从 indices-panel 读 HS300 成交额，比前日
+          if (hs300.amount > 0) {
+            const prevClose = hs300.preClose || hs300.close
+            volumeScore = Math.round(Math.max(0, Math.min(100, 50 + (hs300.amount / 1e10 - 3) * 10)))
+            console.log(`[fear-greed] HS300 amount=${(hs300.amount/1e8).toFixed(0)}亿 → ${volumeScore}`)
+          }
+        }
       }
     } catch (e: any) {
-      console.error('[fear-greed] index_daily failed:', e.message || e)
+      console.error('[fear-greed] indices-panel read failed:', e.message || e)
     }
 
     // ── 加权合成 ──
@@ -131,18 +142,34 @@ export default defineEventHandler(async () => {
 
     // ── 历史 ──
     let history: Array<{ date: string; index: number }> = []
+    let hs300History: Array<{ date: string; hs300Close: number }> = []
     try {
       const old = JSON.parse(await fs.readFile(CACHE_FILE, 'utf-8'))
       history = old.history || []
+      hs300History = old.hs300History || []
     } catch {}
     const last = history[history.length - 1]
     if (!last || last.date !== today) history.push({ date: today, index })
     if (history.length > 90) history = history.slice(-90)
+    // 保留 HS300 收盘价历史（最多 22 天）
+    const lastHS = hs300History[hs300History.length - 1]
+    if (!lastHS || lastHS.date !== today) {
+      // 从 indices-panel 缓存读 HS300 close
+      try {
+        const idxCacheRaw = await fs.readFile(path.join(PERSIST_DIR, 'market-indices.json'), 'utf-8').catch(() => null)
+        if (idxCacheRaw) {
+          const idxCache = JSON.parse(idxCacheRaw)
+          const hs300 = idxCache.indices?.find((i: any) => i.code === '000300.SH')
+          if (hs300?.close > 0) hs300History.push({ date: today, hs300Close: hs300.close })
+        }
+      } catch {}
+      if (hs300History.length > 22) hs300History = hs300History.slice(-22)
+    }
 
     const result = {
       success: true, index, label, level,
       components: { breadth, limitRatio: limitScore, northFlow: northScore, marginChange: marginScore, marketWidth, volumeRatio: volumeScore },
-      history, _ts: Date.now(),
+      history, hs300History, _ts: Date.now(),
     }
 
     await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true }).catch(() => {})
