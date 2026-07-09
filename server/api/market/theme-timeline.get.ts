@@ -74,6 +74,10 @@ export default defineEventHandler(async () => {
       success: true,
       dates: dateRankings.map(dr => dr.date),
       themes: hotThemes,
+      hotItems: dateRankings.map(dr => ({
+        date: dr.date,
+        top: dr.top.slice(0, 5), // 每天 Top 5 + 涨跌幅
+      })),
       _ts: Date.now(),
     }
     await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true }).catch(() => {})

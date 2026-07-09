@@ -56,7 +56,7 @@
 
     <!-- ═══ 板块热度变迁 ═══ -->
     <section class="section">
-      <ThemeTimeline :dates="tlDates" :themes="tlThemes" />
+      <ThemeTimeline :dates="tlDates" :themes="tlThemes" :hotItems="tlHotItems" />
     </section>
 
     <div style="height:60px" />
@@ -163,11 +163,13 @@ async function fetchFearGreed() {
 // ─── 热度变迁 ───
 const tlDates = ref<string[]>([])
 const tlThemes = ref<any[]>([])
+const tlHotItems = ref<any[]>([])
 async function fetchTimeline() {
   try {
     const r = await fetch('/api/market/theme-timeline'); const j = await r.json()
     if (j.dates) tlDates.value = j.dates
     if (j.themes) tlThemes.value = j.themes
+    if (j.hotItems) tlHotItems.value = j.hotItems
   } catch {}
 }
 

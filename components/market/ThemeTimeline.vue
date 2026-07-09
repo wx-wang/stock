@@ -1,70 +1,93 @@
 <template>
   <div class="timeline-section">
     <h2 class="section-title">板块热度变迁</h2>
-    <div v-if="!themes.length" class="empty">加载中...</div>
-    <div v-else ref="chartRef" class="tl-chart"></div>
+    <div v-if="!rows.length" class="empty">加载中...</div>
+    <div v-else class="tl-table-wrap">
+      <table class="tl-table">
+        <thead>
+          <tr>
+            <th class="th-date">日期</th>
+            <th class="th-rank">#1</th>
+            <th class="th-rank">#2</th>
+            <th class="th-rank">#3</th>
+            <th class="th-rank">#4</th>
+            <th class="th-rank">#5</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, i) in rows" :key="row.date" :class="{ today: i === rows.length - 1 }">
+            <td class="td-date">{{ fmtDate(row.date) }}</td>
+            <td v-for="j in 5" :key="j" class="td-item" :title="row.top[j-1]?.name || ''">
+              <template v-if="row.top[j-1]">
+                <span class="item-name">{{ row.top[j-1].name }}</span>
+                <span class="item-pct" :class="row.top[j-1].pctChg > 0 ? 'up' : 'down'">
+                  {{ row.top[j-1].pctChg > 0 ? '+' : '' }}{{ row.top[j-1].pctChg.toFixed(1) }}%
+                </span>
+              </template>
+              <span v-else class="item-none">—</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick, onUnmounted } from 'vue'
+import { computed } from 'vue'
 
-interface ThemeRank { code: string; name: string; ranks: Array<{ date: string; rank: number }> }
+interface RankItem { code: string; name: string; pctChg: number; rank: number }
 
-const props = defineProps<{ dates: string[]; themes: ThemeRank[] }>()
-const chartRef = ref<HTMLDivElement | null>(null)
-let chart: any = null
+const props = defineProps<{
+  dates: string[]
+  themes: Array<{ code: string; name: string; ranks: Array<{ date: string; rank: number }> }>
+  hotItems?: Array<{ date: string; top: RankItem[] }>
+}>()
 
-async function draw() {
-  if (!chartRef.value || !props.themes.length) return
-  await nextTick()
-  if (chart) chart.dispose()
-  try {
-    const echarts = await import('echarts').then(m => m.default || m)
-    chart = echarts.init(chartRef.value, undefined, { renderer: 'canvas' })
+// 如果有 hotItems 直接渲染，否则从 themes 反推
+const rows = computed(() => {
+  if (props.hotItems?.length) return props.hotItems
 
-    const dateLabels = props.dates.map((d: string) => d.slice(4, 6) + '/' + d.slice(6, 8))
-    const palette = ['#fbbf24','#3b82f6','#ef4444','#22c55e','#a855f7','#f97316','#ec4899','#06b6d4']
-
-    const series = props.themes.map((t, i) => ({
-      name: t.name, type: 'line',
-      data: dateLabels.map((dl, j) => {
-        const r = t.ranks.find((r: any) => r.date === props.dates[j])
-        return r ? r.rank : null
-      }),
-      lineStyle: { color: palette[i % palette.length], width: 2 },
-      symbol: 'circle', symbolSize: 4,
-    }))
-
-    chart.setOption({
-      tooltip: { trigger: 'axis' },
-      legend: { bottom: 0, textStyle: { color: '#8b8fa3', fontSize: 10 }, itemWidth: 12, itemHeight: 3 },
-      grid: { top: 12, right: 20, bottom: 36, left: 44 },
-      xAxis: {
-        type: 'category', data: dateLabels,
-        axisLabel: { color: '#6b7280', fontSize: 10, interval: 2 },
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
-      },
-      yAxis: {
-        type: 'value', inverse: true, min: 1, max: 10,
-        axisLabel: { color: '#6b7280', fontSize: 10 },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
-      },
-      series,
-    }, true)
-  } catch (e: any) {
-    console.error('[ThemeTimeline] err:', e.message)
+  const map = new Map<string, RankItem[]>()
+  for (const t of props.themes) {
+    for (const r of t.ranks) {
+      if (!map.has(r.date)) map.set(r.date, [])
+      map.get(r.date)!.push({ code: t.code, name: t.name, pctChg: 0, rank: r.rank })
+    }
   }
-}
+  return [...map.entries()]
+    .map(([date, items]) => {
+      items.sort((a, b) => a.rank - b.rank)
+      return { date, top: items.slice(0, 5) }
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-15)
+})
 
-onMounted(() => { setTimeout(draw, 200) })
-watch(() => props.themes, () => { nextTick(draw) }, { deep: true })
-onUnmounted(() => { chart?.dispose(); chart = null })
+function fmtDate(d: string) {
+  return d.slice(4, 6) + '/' + d.slice(6, 8)
+}
 </script>
 
 <style scoped>
 .timeline-section { margin-bottom: 24px; }
 .section-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
 .empty { font-size: 12px; color: var(--text-secondary); padding: 20px 0; text-align: center; }
-.tl-chart { width: 100%; height: 340px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.tl-table-wrap { overflow-x: auto; }
+.tl-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: block; }
+.tl-table thead { display: table; width: 100%; table-layout: fixed; }
+.tl-table tbody { display: table; width: 100%; table-layout: fixed; max-height: 560px; overflow-y: auto; display: block; }
+.tl-table tbody tr { display: table; width: 100%; table-layout: fixed; }
+.tl-table th { padding: 10px 6px; text-align: center; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border); font-size: 11px; }
+.th-date { width: 9%; }
+.th-rank { width: 18.2%; }
+.td-date { padding: 8px 4px; text-align: center; color: #6b7280; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.03); white-space: nowrap; }
+.td-item { padding: 6px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.item-name { display: block; font-size: 12px; color: var(--text-primary); margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; margin: 0 auto; }
+.item-pct { font-size: 10px; }
+.item-pct.up { color: #ef4444; }
+.item-pct.down { color: #22c55e; }
+.item-none { color: #374151; }
+.today { background: rgba(59,130,246,0.04); }
+.today .td-date { color: #60a5fa; font-weight: 600; }
 </style>
