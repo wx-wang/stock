@@ -4,11 +4,12 @@
     <div v-if="!data || !data.success" class="empty">加载中...</div>
     <div v-else class="fg-body">
       <div class="fg-gauge">
-        <div class="gauge-ring" :style="{ '--pct': data.index }">
-          <div class="gauge-inner">
-            <div class="gauge-value">{{ data.index }}</div>
-            <div class="gauge-label" :class="`lvl-${data.level}`">{{ data.label }}</div>
-          </div>
+        <div class="gauge-track" :style="{ '--pct': data.index }">
+          <div class="gauge-thumb"></div>
+        </div>
+        <div class="gauge-inner">
+          <div class="gauge-value">{{ data.index }}</div>
+          <div class="gauge-label" :class="`lvl-${data.level}`">{{ data.label }}</div>
         </div>
       </div>
       <div class="fg-bars">
@@ -36,19 +37,18 @@ const labelMap: Record<string,string> = {
 .empty { font-size: 12px; color: var(--text-secondary); padding: 20px 0; text-align: center; }
 .fg-body { display: flex; gap: 24px; align-items: center; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
 
-.fg-gauge { flex-shrink: 0; }
-.gauge-ring {
-  width: 140px; height: 140px; border-radius: 50%;
-  background: conic-gradient(#ef4444 0% 20%, #f97316 20% 40%, #eab308 40% 60%, #22c55e 60% 80%, #10b981 80% 100%);
-  mask: radial-gradient(transparent 62%, #000 63%);
-  display: flex; align-items: center; justify-content: center;
-  position: relative;
+.fg-gauge { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
+.gauge-track {
+  width: 200px; height: 20px; border-radius: 10px;
+  background: linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #10b981);
+  position: relative; margin-bottom: 8px;
 }
-.gauge-ring::after {
-  content: ''; position: absolute; width: 4px; height: 30px; background: #fff;
-  bottom: 50%; left: 50%; transform-origin: bottom center;
-  transform: translateX(-50%) rotate(calc((var(--pct) - 50) * 1.8deg));
-  border-radius: 2px;
+.gauge-thumb {
+  position: absolute; top: -5px; bottom: -5px;
+  width: 6px; background: #fff; border-radius: 3px;
+  left: calc(var(--pct, 50) * 1%);
+  transform: translateX(-50%);
+  box-shadow: 0 0 6px rgba(255,255,255,0.4);
 }
 .gauge-inner { text-align: center; }
 .gauge-value { font-size: 36px; font-weight: 800; color: var(--text-primary); line-height: 1; }
