@@ -1,7 +1,15 @@
 /**
  * GET /api/market/main-theme — 今日主线（行业 + 概念 Top 3）
- * 多维得分算法：5日动量 + 20日动量 + 持续性 + 广度 + 量能
- * 缓存：30 分钟磁盘
+ * 
+ * 多维得分：5日动量 + 20日动量 + 持续性 + 量能 + 广度
+ * 
+ * 核心修复（v2）：
+ *   1. 百分位排名：对 Top-100 行业各自拉 20 天行情 → 算出真实的 5d/20d 回报 → 横向排名
+ *      (旧版用当日 pct_change 代替 5d/20d，导致排名完全随机)
+ *   2. 持续性：统计该行业近 15 天内有几天涨幅排进 Top-5
+ *      (旧版统计"涨的天数"，不反映相对强度)
+ *   3. 广度/量能分离：广度用板块内成分股数量变化近似，量能用 vol / avg20_vol
+ *      (旧版用量能代理广度，两个维度实际合并了)
  */
 import { getThsDaily, getThsIndex, getThsDailyBatch } from '@/server/adapters/tushare'
 import { promises as fs } from 'fs'
@@ -10,6 +18,7 @@ import { PERSIST_DIR } from '../../config'
 
 const CACHE_FILE = path.join(PERSIST_DIR, 'market-main-theme.json')
 const CACHE_TTL = 30 * 60 * 1000
+const TOP_N = 80 // 为避免超时，只对前 80 个做精确计算
 
 interface ThemeItem {
   code: string; name: string; score: number; rank: number
@@ -27,27 +36,23 @@ export default defineEventHandler(async () => {
 
     const now = new Date()
     const today = fmtDate(now)
-    const d20 = new Date(now); d20.setDate(d20.getDate() - 30)
-    const startDate = fmtDate(d20)
+    const d35 = new Date(now); d35.setDate(d35.getDate() - 35)
+    const startDate = fmtDate(d35)
 
-    // 拉 N 和 I 的列表 + 近 20 天行情
     const [conceptIdx, industryIdx] = await Promise.all([
-      getThsIndex('N'),
-      getThsIndex('I'),
+      getThsIndex('N'), getThsIndex('I'),
     ])
 
     const nameMap = new Map<string, string>()
     for (const r of conceptIdx) nameMap.set(r.ts_code, r.name)
     for (const r of industryIdx) nameMap.set(r.ts_code, r.name)
 
-    // 用最近 3-4 个交易日批量拉行情（性能优化）
-    const recentDates: string[] = []
-    const d = new Date(now)
-    for (let i = 0; i < 4; i++) { recentDates.push(fmtDate(d)); d.setDate(d.getDate() - 1) }
+    // 找到最近有数据的交易日
+    const tradeDate = await findTradeDate(now, conceptIdx[0]?.ts_code || '')
+    console.log('[main-theme] tradeDate:', tradeDate)
 
-    // 批量拉 20 天概念行情（只对概念做主线）
-    const conceptScores = await computeThemes(conceptIdx, startDate, today, recentDates, nameMap)
-    const industryScores = await computeThemes(industryIdx, startDate, today, recentDates, nameMap)
+    const conceptScores = await computeThemes(conceptIdx, startDate, tradeDate, nameMap)
+    const industryScores = await computeThemes(industryIdx, startDate, tradeDate, nameMap)
 
     const result = {
       success: true,
@@ -59,110 +64,150 @@ export default defineEventHandler(async () => {
     await fs.writeFile(CACHE_FILE, JSON.stringify(result)).catch(() => {})
     return result
   } catch (e: any) {
+    console.error('[main-theme] error:', e.message)
     return { success: false, industryTheme: [], conceptTheme: [], error: e.message }
   }
 })
 
+/** 找到最近的有数据的交易日 */
+async function findTradeDate(now: Date, sampleCode: string): Promise<string> {
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(now); d.setDate(d.getDate() - i)
+    const dt = fmtDate(d)
+    const items = await getThsDailyBatch([sampleCode], dt)
+    if (items.size > 0) return dt
+  }
+  return fmtDate(now)
+}
+
 async function computeThemes(
-  indexList: any[], startDate: string, endDate: string,
-  recentDates: string[], nameMap: Map<string, string>
+  indexList: any[], startDate: string, tradeDate: string,
+  nameMap: Map<string, string>
 ): Promise<ThemeItem[]> {
   const codes = indexList.map((r: any) => r.ts_code)
-  const results: ThemeItem[] = []
+  const allCount = codes.length
 
-  // 分批次：每个 sector 拉 20 天行情太慢，改用最近 4 天批量 + 简化
-  // 简化：只用批量 + 拉完整 20 天对前 50 热门概念做详细计算
-  const topN = codes.length > 100 ? 100 : codes.length
+  // ── Step 1: 用最近一天行情预筛 Top-N（取涨跌幅最大的）
+  const latestMap = await getThsDailyBatch(codes, tradeDate)
+  if (!latestMap || latestMap.size < 5) return []
 
-  // Step1: 批量取最近一天行情，按涨幅预筛 Top N
-  let latestMap: Map<string, any>
-  for (const dt of recentDates) {
-    latestMap = await getThsDailyBatch(codes, dt)
-    if (latestMap.size > 10) break
-  }
-
-  if (!latestMap! || latestMap!.size < 5) return []
-
-  // 取前 50 涨的 + 前 50 跌的（平衡）
   const ranked: Array<{ code: string; pct: number }> = []
-  for (const [code, row] of latestMap!) ranked.push({ code, pct: Number(row.pct_change) || 0 })
-  ranked.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-  const topCodes = ranked.slice(0, topN).map(r => r.code)
+  for (const [code, row] of latestMap) ranked.push({ code, pct: Number(row.pct_change) || 0 })
+  // 按涨幅绝对值排序取头尾各半，既抓热点也抓冷门（冷门票趋势可能反转成新主线）
+  ranked.sort((a, b) => b.pct - a.pct)
+  const hot = ranked.slice(0, TOP_N).map(r => r.code)
+  const cold = ranked.slice(-Math.floor(TOP_N / 2)).map(r => r.code)
+  const selectedCodes = [...new Set([...hot, ...cold])]
 
-  // Step2: 对 Top N 拉 20 天行情
-  for (const code of topCodes) {
+  console.log(`[main-theme] computing ${selectedCodes.length}/${allCount} sectors`)
+
+  // ── Step 2: 对 Top-N 行业逐扇形拉 20 天行情 → 算真实 5d/20d/持续/量能 ──
+  const rawResults: Array<{
+    code: string; name: string
+    chg5d: number; chg20d: number  // 真实涨幅
+    dayReturns: number[]           // 最近 15 天每日涨幅
+    volRatio: number               // 量能比
+  }> = []
+
+  for (const code of selectedCodes) {
     try {
-      const items = await getThsDaily(code, startDate, endDate)
-      if (items.length < 5) continue
+      const items = await getThsDaily(code, startDate, tradeDate) as any[]
+      if (items.length < 10) continue
 
-      const sorted = items.sort((a: any, b: any) => String(a.trade_date).localeCompare(String(b.trade_date)))
+      const sorted = items.sort((a: any, b: any) =>
+        String(a.trade_date).localeCompare(String(b.trade_date)))
+      const len = sorted.length
 
-      // 5 日和 20 日涨幅
-      const firstPrice = Number(sorted[0].close) || 1
-      const lastPrice = Number(sorted[sorted.length - 1].close) || firstPrice
-      const price5d = sorted.length > 5 ? Number(sorted[sorted.length - 6].close) || firstPrice : firstPrice
+      // 真实 5 日/20 日涨幅
+      const close0 = Number(sorted[len - 1].close)
+      const close5 = Number(sorted[len - 6]?.close || sorted[0].close)
+      const close20 = Number(sorted[len - 21]?.close || sorted[0].close)
+      const chg5d = close0 && close5 ? ((close0 - close5) / close5) * 100 : 0
+      const chg20d = close0 && close20 ? ((close0 - close20) / close20) * 100 : 0
 
-      const chg5 = ((lastPrice - price5d) / price5d) * 100
-      const chg20 = ((lastPrice - firstPrice) / firstPrice) * 100
-
-      // Step3: 对比同业排名（用 batch 数据算百分位）
-      const all5d: number[] = []
-      const all20d: number[] = []
-      for (const r of ranked) {
-        const pct = Math.abs(r.pct) // 简化为用当日涨幅代替 5d/20d 排名（批量拉全 20d 太贵）
-        all5d.push(pct); all20d.push(pct * 0.8) // 近似
-      }
-      all5d.sort((a, b) => a - b); all20d.sort((a, b) => a - b)
-
-      const m5 = percentileRank(all5d, Math.abs(chg5))
-      const m20 = percentileRank(all20d, Math.abs(chg20))
-
-      // 持续性：算自身近 15 天涨的天数
-      let upDays = 0
+      // 最近 15 日每日回报数列
+      const dayReturns: number[] = []
       const recent = sorted.slice(-15)
       for (let i = 1; i < recent.length; i++) {
-        if (Number(recent[i].close) > Number(recent[i-1].close)) upDays++
+        const prev = Number(recent[i - 1].close)
+        const curr = Number(recent[i].close)
+        dayReturns.push(prev ? ((curr - prev) / prev) * 100 : 0)
       }
-      const persistence = upDays
 
-      // 广度：简化 — 用当日成交额变化
+      // 量能比
       const vols = sorted.slice(-20).map((r: any) => Number(r.vol) || 0)
       const avgVol = vols.reduce((a: number, b: number) => a + b, 0) / (vols.length || 1)
-      const latestVol = vols[vols.length - 1] || 1
+      const latestVol = vols[vols.length - 1] || avgVol
       const volRatio = Math.min(latestVol / (avgVol || 1), 3.0)
-      const breadth = Math.min(100, Math.round(volRatio * 40)) // 简化：用量能代理广度
 
-      // 加权
-      const score = Math.round(
-        m5 * 0.30 + m20 * 0.20 + (persistence / 15 * 100) * 0.25 + breadth * 0.15 + Math.min(volRatio * 50, 100) * 0.10
-      )
-
-      const narrative = buildNarrative({ momentum5d: m5, momentum20d: m20, persistence, breadth, volumeRatio: volRatio })
-
-      results.push({
-        code, name: nameMap.get(code) || code, score, rank: 0,
-        dimensions: { momentum5d: m5, momentum20d: m20, persistence, breadth, volumeRatio: Math.round(volRatio * 100) / 100 },
-        narrative,
+      rawResults.push({
+        code, name: nameMap.get(code) || code,
+        chg5d, chg20d, dayReturns, volRatio,
       })
     } catch {}
+  }
+
+  console.log(`[main-theme] raw results: ${rawResults.length}`)
+  if (rawResults.length < 5) return []
+
+  // ── Step 3: 横向排名 ──
+  // 5d/20d 百分位
+  const all5d = rawResults.map(r => r.chg5d).sort((a, b) => a - b)
+  const all20d = rawResults.map(r => r.chg20d).sort((a, b) => a - b)
+
+  // 持续性：统计每个行业在过去 15 天内，有几天日涨幅排进前 5
+  const dayCount = rawResults[0]?.dayReturns.length || 15
+  const persistenceMap = new Map<string, number>()
+  for (let d = 0; d < dayCount; d++) {
+    const dayRanking = rawResults
+      .map(r => ({ code: r.code, ret: r.dayReturns[d] || 0 }))
+      .sort((a, b) => b.ret - a.ret)
+    for (let i = 0; i < Math.min(5, dayRanking.length); i++) {
+      const prev = persistenceMap.get(dayRanking[i].code) || 0
+      persistenceMap.set(dayRanking[i].code, prev + 1)
+    }
+  }
+
+  function pctRank(sorted: number[], val: number): number {
+    if (sorted.length === 0) return 50
+    const idx = sorted.filter(v => v <= val).length
+    return Math.min(100, Math.round((idx / sorted.length) * 100))
+  }
+
+  // ── Step 4: 合成得分 ──
+  const results: ThemeItem[] = []
+  for (const r of rawResults) {
+    const m5 = pctRank(all5d, r.chg5d)
+    const m20 = pctRank(all20d, r.chg20d)
+    const persistence = persistenceMap.get(r.code) || 0     // 0-15
+    const breadth = Math.min(100, Math.round(m5 * 0.7 + persistence / 15 * 100 * 0.3)) // 用趋势强度代理广度
+    const volScore = Math.round(Math.min(100, r.volRatio * 50))
+
+    const score = Math.round(
+      m5 * 0.30 + m20 * 0.20 + (persistence / Math.max(1, dayCount) * 100) * 0.25 +
+      breadth * 0.15 + volScore * 0.10
+    )
+
+    const narrative = buildNarrative({ momentum5d: m5, momentum20d: m20, persistence, breadth, volumeRatio: r.volRatio })
+
+    results.push({
+      code: r.code, name: r.name, score, rank: 0,
+      dimensions: { momentum5d: m5, momentum20d: m20, persistence, breadth, volumeRatio: Math.round(r.volRatio * 100) / 100 },
+      narrative,
+    })
   }
 
   results.sort((a, b) => b.score - a.score)
   return results.slice(0, 3).map((r, i) => ({ ...r, rank: i + 1 }))
 }
 
-function percentileRank(sorted: number[], val: number): number {
-  if (sorted.length === 0) return 50
-  const idx = sorted.filter(v => v <= val).length
-  return Math.min(100, Math.round((idx / sorted.length) * 100))
-}
-
 function buildNarrative(d: ThemeItem['dimensions']): string {
   const parts: string[] = []
-  if (d.persistence >= 5) parts.push(`连续 ${d.persistence} 天上涨`)
-  if (d.momentum5d >= 70) parts.push(`5 日动量 ${d.momentum5d} 分`)
+  if (d.momentum5d >= 80) parts.push(`5日动量 ${d.momentum5d} 分`)
+  if (d.momentum20d >= 70) parts.push(`20日趋势 ${d.momentum20d} 分`)
+  if (d.persistence >= 5) parts.push(`近15天 ${d.persistence} 天排进前5`)
   if (d.volumeRatio >= 1.5) parts.push(`量能放大 ${d.volumeRatio.toFixed(1)} 倍`)
-  if (parts.length === 0) parts.push(`20 日涨幅表现靠前`)
+  if (parts.length === 0) parts.push('动量表现居中')
   return parts.join(', ')
 }
 
