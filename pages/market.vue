@@ -39,6 +39,11 @@
       <AiSummary :data="aiData" @refresh="fetchAiSummary(true)" />
     </section>
 
+    <!-- ═══ 论坛舆情 ═══ -->
+    <section class="section">
+      <ForumSentiment :data="forumData" />
+    </section>
+
     <!-- ═══ 热门板块 ═══ -->
     <section class="section">
       <HotRanking :industries="hotIndustries" :concepts="hotConcepts" />
@@ -72,6 +77,7 @@ import MainThemeCard from '@/components/market/MainThemeCard.vue'
 import FearGreedGauge from '@/components/market/FearGreedGauge.vue'
 import ThemeTimeline from '@/components/market/ThemeTimeline.vue'
 import AiSummary from '@/components/market/AiSummary.vue'
+import ForumSentiment from '@/components/market/ForumSentiment.vue'
 
 // ─── 市场位置 ───
 const posSuccess = ref(false); const posBuilding = ref(false)
@@ -173,6 +179,16 @@ async function fetchTimeline() {
   } catch {}
 }
 
+// ─── 论坛舆情 ───
+const forumData = ref<any>(null)
+async function fetchForumSentiment() {
+  try {
+    const r = await fetch('/api/market/forum-sentiment')
+    const j = await r.json()
+    if (j.success) forumData.value = j
+  } catch {}
+}
+
 // ─── AI 总结 ───
 const aiData = ref<any>(null)
 async function fetchAiSummary(force = false) {
@@ -190,6 +206,7 @@ onMounted(() => {
   fetchMainTheme()
   fetchFearGreed()
   fetchTimeline()
+  fetchForumSentiment()
   fetchAiSummary()
 })
 </script>

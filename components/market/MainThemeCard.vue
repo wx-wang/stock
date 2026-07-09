@@ -17,6 +17,8 @@
             <span class="dim" title="持续天数">持续:{{ t.dimensions.persistence }}天</span>
             <span class="dim" title="广度">广度:{{ t.dimensions.breadth }}</span>
             <span class="dim" title="量能比">量能:{{ t.dimensions.volumeRatio }}x</span>
+            <span v-if="t.dimensions.discussionHeat >= 10" class="dim dim-forum" title="论坛讨论热度">讨论:{{ t.dimensions.discussionHeat }}</span>
+            <span v-if="t.dimensions.crossForum >= 1" class="dim dim-resonance" title="跨论坛共振">共振:{{ t.dimensions.crossForum }}源</span>
           </div>
           <div class="theme-narrative">{{ t.narrative }}</div>
         </div>
@@ -35,6 +37,8 @@
             <span class="dim">持续:{{ t.dimensions.persistence }}天</span>
             <span class="dim">广度:{{ t.dimensions.breadth }}</span>
             <span class="dim">量能:{{ t.dimensions.volumeRatio }}x</span>
+            <span v-if="t.dimensions.discussionHeat >= 10" class="dim dim-forum">讨论:{{ t.dimensions.discussionHeat }}</span>
+            <span v-if="t.dimensions.crossForum >= 1" class="dim dim-resonance">共振:{{ t.dimensions.crossForum }}源</span>
           </div>
           <div class="theme-narrative">{{ t.narrative }}</div>
         </div>
@@ -66,6 +70,8 @@ defineProps<{ industryTheme: ThemeItem[]; conceptTheme: ThemeItem[] }>()
 .theme-score { font-size: 13px; font-weight: 700; color: #f59e0b; }
 .theme-dims { display: flex; gap: 8px; margin-bottom: 4px; }
 .dim { font-size: 10px; color: #6b7280; background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px; }
+.dim-forum { color: #a78bfa; background: rgba(139,92,246,0.12); }
+.dim-resonance { color: #34d399; background: rgba(52,211,153,0.12); }
 .theme-narrative { font-size: 11px; color: var(--text-secondary); }
 
 @media (max-width: 600px) { .theme-grid { grid-template-columns: 1fr; } }

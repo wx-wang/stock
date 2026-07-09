@@ -95,16 +95,40 @@ async function buildDataContext(): Promise<string | null> {
       } catch { return null }
     }
 
-    const [indices, breadth, hot] = await Promise.all([
+    const [indices, breadth, hot, forum] = await Promise.all([
       fetchJson('/api/market/indices-panel'),
       fetchJson('/api/market/breadth'),
       fetchJson('/api/market/hot-sectors'),
+      fetchJson('/api/market/forum-sentiment'),
     ])
 
     const idxstr = indices?.indices?.map((i: any) => `${i.name}: ${i.close} / ${i.pctChg > 0 ? '+' : ''}${i.pctChg}%`).join('\n') || 'N/A'
     const updown = breadth?.success ? `${breadth.up}涨 / ${breadth.down}跌 / ${breadth.flat}平, 涨停${breadth.upLimit}跌停${breadth.dnLimit}` : 'N/A'
     const hotI = hot?.industries?.slice(0, 3).map((i: any) => `${i.name}(${i.pctChg > 0 ? '+' : ''}${i.pctChg}%)`).join(', ') || 'N/A'
     const hotC = hot?.concepts?.slice(0, 3).map((i: any) => `${i.name}(${i.pctChg > 0 ? '+' : ''}${i.pctChg}%)`).join(', ') || 'N/A'
+
+    // 论坛舆情数据
+    let forumStr = 'N/A'
+    if (forum?.success) {
+      const sentiment = forum.summary?.dominant_sentiment || '未知'
+      const totalTopics = forum.summary?.total_topics || 0
+      const domestic = forum.summary?.domestic_forums || 0
+      const intl = forum.summary?.international_forums || 0
+      const sources = (forum.summary?.forums_crawled || []).join(', ')
+      const hotConcepts = (forum.concept_heat || []).slice(0, 5)
+        .map((c: any) => `${c.concept}(${c.count}条)`)
+        .join(', ')
+      const topTopicTitles = (forum.top_topics || []).slice(0, 5)
+        .map((t: any) => `[${t.source}] ${t.title}`)
+        .join('\n  ')
+      forumStr = `论坛舆情：
+  - 市场情绪: ${sentiment}
+  - 话题总量: ${totalTopics}（国内${domestic}条 + 国际${intl}条）
+  - 覆盖来源: ${sources}
+  - 讨论最热的概念: ${hotConcepts}
+  - 热门话题:
+  ${topTopicTitles}`
+    }
 
     return `今日市场数据：
 - 主要指数：
@@ -113,6 +137,7 @@ ${idxstr}
 - 热门行业 Top 3: ${hotI}
 - 热门概念 Top 3: ${hotC}
 - 股债利差: 参考 market/position API
-- 情绪指数: 参考 market/fear-greed API`
+- 情绪指数: 参考 market/fear-greed API
+${forumStr}`
   } catch { return null }
 }

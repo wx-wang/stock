@@ -1,15 +1,14 @@
 /**
  * GET /api/market/main-theme — 今日主线（行业 + 概念 Top 3）
  * 
- * 多维得分：5日动量 + 20日动量 + 持续性 + 量能 + 广度
+ * 多维得分：5日动量 + 20日动量 + 持续性 + 量能 + 广度 + 讨论热度 + 跨论坛共振
  * 
  * 核心修复（v2）：
  *   1. 百分位排名：对 Top-100 行业各自拉 20 天行情 → 算出真实的 5d/20d 回报 → 横向排名
- *      (旧版用当日 pct_change 代替 5d/20d，导致排名完全随机)
  *   2. 持续性：统计该行业近 15 天内有几天涨幅排进 Top-5
- *      (旧版统计"涨的天数"，不反映相对强度)
  *   3. 广度/量能分离：广度用板块内成分股数量变化近似，量能用 vol / avg20_vol
- *      (旧版用量能代理广度，两个维度实际合并了)
+ *   4. 讨论热度：从 forum-data.json 读取论坛舆情数据，匹配概念讨论热度
+ *   5. 跨论坛共振：统计同一概念在多少个不同论坛源中被讨论
  */
 import { getThsDaily, getThsIndex, getThsDailyBatch } from '@/server/adapters/tushare'
 import { promises as fs } from 'fs'
@@ -17,12 +16,17 @@ import path from 'path'
 import { PERSIST_DIR } from '../../config'
 
 const CACHE_FILE = path.join(PERSIST_DIR, 'market-main-theme.json')
+const FORUM_DATA_FILE = path.join(PERSIST_DIR, 'forum-data.json')
 const CACHE_TTL = 30 * 60 * 1000
 const TOP_N = 80 // 为避免超时，只对前 80 个做精确计算
 
 interface ThemeItem {
   code: string; name: string; score: number; rank: number
-  dimensions: { momentum5d: number; momentum20d: number; persistence: number; breadth: number; volumeRatio: number }
+  dimensions: {
+    momentum5d: number; momentum20d: number; persistence: number
+    breadth: number; volumeRatio: number
+    discussionHeat: number; crossForum: number
+  }
   narrative: string
 }
 
@@ -51,8 +55,12 @@ export default defineEventHandler(async () => {
     const tradeDate = await findTradeDate(now, conceptIdx[0]?.ts_code || '')
     console.log('[main-theme] tradeDate:', tradeDate)
 
-    const conceptScores = await computeThemes(conceptIdx, startDate, tradeDate, nameMap)
-    const industryScores = await computeThemes(industryIdx, startDate, tradeDate, nameMap)
+    // 加载论坛舆情信号
+    const forumSignal = await loadForumSignals()
+    console.log('[main-theme] forumSignal loaded:', forumSignal ? `${forumSignal.conceptHeat.size} concepts, ${forumSignal.totalTopics} topics` : 'none')
+
+    const conceptScores = await computeThemes(conceptIdx, startDate, tradeDate, nameMap, forumSignal)
+    const industryScores = await computeThemes(industryIdx, startDate, tradeDate, nameMap, forumSignal)
 
     const result = {
       success: true,
@@ -82,7 +90,8 @@ async function findTradeDate(now: Date, sampleCode: string): Promise<string> {
 
 async function computeThemes(
   indexList: any[], startDate: string, tradeDate: string,
-  nameMap: Map<string, string>
+  nameMap: Map<string, string>,
+  forumSignal: ForumSignal | null,
 ): Promise<ThemeItem[]> {
   const codes = indexList.map((r: any) => r.ts_code)
   const allCount = codes.length
@@ -183,16 +192,26 @@ async function computeThemes(
     const breadth = Math.min(100, Math.round(m5 * 0.7 + persistence / 15 * 100 * 0.3)) // 用趋势强度代理广度
     const volScore = Math.round(Math.min(100, r.volRatio * 50))
 
+    // 论坛舆情：讨论热度 + 跨论坛共振
+    let discussionHeat = 0
+    let crossForum = 0
+    if (forumSignal) {
+      const fh = matchForumHeat(r.name, forumSignal)
+      discussionHeat = fh.heat
+      crossForum = fh.sources
+    }
+    const crossForumScore = Math.min(100, crossForum * 20) // 每个来源 20 分，最多 100
+
     const score = Math.round(
-      m5 * 0.30 + m20 * 0.20 + (persistence / Math.max(1, dayCount) * 100) * 0.25 +
-      breadth * 0.15 + volScore * 0.10
+      m5 * 0.25 + m20 * 0.15 + (persistence / Math.max(1, dayCount) * 100) * 0.20 +
+      breadth * 0.10 + volScore * 0.10 + discussionHeat * 0.10 + crossForumScore * 0.10
     )
 
-    const narrative = buildNarrative({ momentum5d: m5, momentum20d: m20, persistence, breadth, volumeRatio: r.volRatio })
+    const narrative = buildNarrative({ momentum5d: m5, momentum20d: m20, persistence, breadth, volumeRatio: r.volRatio, discussionHeat, crossForum })
 
     results.push({
       code: r.code, name: r.name, score, rank: 0,
-      dimensions: { momentum5d: m5, momentum20d: m20, persistence, breadth, volumeRatio: Math.round(r.volRatio * 100) / 100 },
+      dimensions: { momentum5d: m5, momentum20d: m20, persistence, breadth, volumeRatio: Math.round(r.volRatio * 100) / 100, discussionHeat, crossForum },
       narrative,
     })
   }
@@ -207,10 +226,111 @@ function buildNarrative(d: ThemeItem['dimensions']): string {
   if (d.momentum20d >= 70) parts.push(`20日趋势 ${d.momentum20d} 分`)
   if (d.persistence >= 5) parts.push(`近15天 ${d.persistence} 天排进前5`)
   if (d.volumeRatio >= 1.5) parts.push(`量能放大 ${d.volumeRatio.toFixed(1)} 倍`)
+  if (d.discussionHeat >= 10) parts.push(`论坛讨论热度 ${d.discussionHeat}`)
+  if (d.crossForum >= 2) parts.push(`${d.crossForum} 个论坛共振`)
   if (parts.length === 0) parts.push('动量表现居中')
   return parts.join(', ')
 }
 
 function fmtDate(d: Date): string {
   return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`
+}
+
+// ─── 论坛舆情数据加载 ───
+const FORUM_TOPIC_CONCEPTS: Record<string, string[]> = {
+  '光刻机': ['光刻机', '光刻胶', 'DUV', 'EUV', 'ASML'],
+  '半导体': ['半导体', '芯片', '晶圆', '封测', '存储芯片', 'HBM', 'Chiplet', '先进封装', 'IGBT', '碳化硅', 'SiC'],
+  'AI算力': ['AI算力', '算力', 'GPU', '英伟达', 'NVIDIA', 'CPO', '光模块', '服务器', '液冷', '数据中心'],
+  '消费电子': ['消费电子', '手机', '苹果产业链', '华为产业链', '小米', 'VR', 'AR', '果链', '折叠屏'],
+  '新能源': ['光伏', '储能', '锂电池', '锂矿', '钠电池', '固态电池', '钙钛矿', '风电', '逆变器', '宁德时代', '比亚迪'],
+  '智能驾驶': ['自动驾驶', '智能驾驶', '激光雷达', '车路云', '智能座舱', '无人驾驶', 'Robotaxi'],
+  '机器人': ['机器人', '人形机器人', '伺服电机', '减速器', '特斯拉bot'],
+  '医药': ['创新药', 'CRO', 'CXO', '医疗器械', '减肥药', 'GLP-1', '基因编辑', '中药'],
+  '军工航天': ['军工', '航天', '卫星', '大飞机', '低空经济', '无人机'],
+  '金融': ['券商', '银行', '保险', '非银', '数字货币', '跨境支付'],
+  '电力': ['电力', '电网', '特高压', '虚拟电厂', '绿电', '火电', '核电'],
+  '周期': ['煤炭', '钢铁', '有色', '化工', '石油', '黄金', '稀土', '铜', '铝'],
+}
+
+interface ForumSignal {
+  conceptHeat: Map<string, { count: number; sources: Set<string> }>
+  totalTopics: number
+  dominantSentiment: string
+}
+
+async function loadForumSignals(): Promise<ForumSignal | null> {
+  try {
+    const raw = await fs.readFile(FORUM_DATA_FILE, 'utf-8')
+    const data = JSON.parse(raw)
+    if (!data.success && !data.top_topics) return null
+
+    const conceptHeat = new Map<string, { count: number; sources: Set<string> }>()
+    const topics = data.top_topics || []
+
+    for (const t of topics) {
+      const concepts = t.concepts || []
+      const source = t.source || 'unknown'
+      for (const c of concepts) {
+        if (!conceptHeat.has(c)) conceptHeat.set(c, { count: 0, sources: new Set() })
+        const entry = conceptHeat.get(c)!
+        entry.count++
+        entry.sources.add(source)
+      }
+    }
+
+    // 同时从 concept_heat 字段合并
+    for (const ch of data.concept_heat || []) {
+      const c = ch.concept
+      if (!conceptHeat.has(c)) conceptHeat.set(c, { count: ch.count || 0, sources: new Set() })
+      else conceptHeat.get(c)!.count = Math.max(conceptHeat.get(c)!.count, ch.count || 0)
+    }
+
+    return {
+      conceptHeat,
+      totalTopics: data.summary?.total_topics || topics.length,
+      dominantSentiment: data.summary?.dominant_sentiment || '中性',
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 根据板块名称匹配论坛概念标签，返回讨论热度 (0-100) 和跨论坛源数
+ */
+function matchForumHeat(sectorName: string, forumSignal: ForumSignal): { heat: number; sources: number } {
+  let maxHeat = 0
+  let maxSources = 0
+
+  for (const [concept, keywords] of Object.entries(FORUM_TOPIC_CONCEPTS)) {
+    const matched = keywords.some(kw => sectorName.includes(kw))
+    if (!matched) continue
+
+    const entry = forumSignal.conceptHeat.get(concept)
+    if (!entry) continue
+
+    if (entry.count > maxHeat) {
+      maxHeat = entry.count
+      maxSources = entry.sources.size
+    }
+  }
+
+  // 如果没有直接匹配，检查 sectorName 是否包含概念名
+  if (maxHeat === 0) {
+    for (const [concept, entry] of forumSignal.conceptHeat.entries()) {
+      if (sectorName.includes(concept) || concept.includes(sectorName.slice(0, 2))) {
+        if (entry.count > maxHeat) {
+          maxHeat = entry.count
+          maxSources = entry.sources.size
+        }
+      }
+    }
+  }
+
+  // 归一化热度
+  const totalTopics = Math.max(1, forumSignal.totalTopics)
+  const heat = Math.min(100, Math.round((maxHeat / totalTopics) * 100 * 5)) // 放大5倍让信号更明显
+  const sources = Math.min(7, maxSources)
+
+  return { heat, sources }
 }

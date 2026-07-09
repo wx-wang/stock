@@ -75,9 +75,15 @@ def classify_sentiment(title, text=''):
     return 'neutral'
 
 def clean_text(text):
-    """清理 HTML 标签和空白"""
+    """清理 HTML 标签和空白，同时修复编码问题"""
     text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'&[a-z]+;', ' ', text)  # HTML entities
     text = re.sub(r'\s+', ' ', text).strip()
+    # 处理可能的编码残留
+    try:
+        text = text.encode('latin-1').decode('utf-8')
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        pass
     return text
 
 # ========== 东方财富股吧 ==========
@@ -88,25 +94,41 @@ def fetch_eastmoney():
     try:
         req = Request('https://guba.eastmoney.com/', headers=HEADERS)
         resp = urlopen(req, timeout=15, context=ssl_context())
-        html = resp.read().decode('gbk', errors='ignore')
+        # 东财页面实际是 UTF-8，不是 GBK
+        html = resp.read().decode('utf-8', errors='ignore')
 
-        # 方法1: 找热门标题 (通过对 class 为 note-title 的元素)
+        # 找标题 (多种模式)
         titles = re.findall(r'<a[^>]*title="([^"]+)"[^>]*>', html)
-        # 方法2: 提取 note-body 里的内容
-        bodies = re.findall(r'class="note-body[^"]*"[^>]*>([^<]+)', html)
-
-        # 合并去重
+        # 也尝试找 note-title
+        note_titles = re.findall(r'class="[^"]*note-title[^"]*"[^>]*>([^<]+)', html)
+        
+        # 噪声过滤
+        noise = {'举报', '沪ICP', '营业部', '证监会', '客户端', '下载', '风险提示',
+                 '东方财富', '天天基金', '移动', '首页', '股吧首页'}
         seen = set()
-        for t in titles[:30]:
+        for t in titles[:50]:
             t = t.strip()
-            if len(t) > 5 and t not in seen and not t.startswith('http'):
-                seen.add(t)
-                topics.append({
-                    'title': t,
-                    'source': 'eastmoney',
-                    'concepts': classify_topic(t),
-                    'sentiment': classify_sentiment(t),
-                })
+            if len(t) > 5 and len(t) < 120 and t not in seen and not t.startswith('http'):
+                if not any(n in t for n in noise):
+                    seen.add(t)
+                    concepts = classify_topic(t)
+                    topics.append({
+                        'title': t,
+                        'source': 'eastmoney',
+                        'concepts': concepts if concepts else ['财经综合'],
+                        'sentiment': classify_sentiment(t),
+                    })
+        for t in note_titles[:20]:
+            t = clean_text(t)
+            if len(t) > 5 and t not in seen:
+                if not any(n in t for n in noise):
+                    seen.add(t)
+                    topics.append({
+                        'title': t,
+                        'source': 'eastmoney',
+                        'concepts': classify_topic(t),
+                        'sentiment': classify_sentiment(t),
+                    })
     except Exception as e:
         print(f'[东财] 爬取失败: {e}')
 
@@ -225,6 +247,49 @@ def fetch_taoguba():
 
 # ========== 国外论坛 (通过 RSS / 聚合站间接获取) ==========
 
+# ── 财联社电报 ──
+def fetch_cls_telegraph():
+    """财联社电报 — 中文财经快讯"""
+    topics = []
+    try:
+        req = Request('https://www.cls.cn/telegraph', headers=HEADERS)
+        resp = urlopen(req, timeout=15, context=ssl_context())
+        html = resp.read().decode('utf-8', errors='ignore')
+        # 财联社电报标题
+        titles = re.findall(r'<a[^>]*title="([^"]{6,})"[^>]*>', html)
+        # 也找 telegraph-item 中的文本
+        items = re.findall(r'class="[^"]*telegraph-item[^"]*"[^>]*>(.*?)</div>', html, re.S)
+        
+        noise = {'财联社', '下载', '电报', '客户端', 'VIP', '声明', '联系', '沪ICP'}
+        seen = set()
+        for t in titles[:20]:
+            t = t.strip()
+            if len(t) > 5 and not any(n in t for n in noise) and t not in seen:
+                seen.add(t)
+                topics.append({
+                    'title': t[:120],
+                    'source': 'cls',
+                    'concepts': classify_topic(t),
+                    'sentiment': classify_sentiment(t),
+                })
+        for item in items[:15]:
+            text = clean_text(item)
+            if len(text) > 6 and text not in seen:
+                seen.add(text)
+                topics.append({
+                    'title': text[:120],
+                    'source': 'cls',
+                    'concepts': classify_topic(text),
+                    'sentiment': classify_sentiment(text),
+                })
+    except Exception as e:
+        print(f'[财联社] 失败: {type(e).__name__}: {e}')
+
+    print(f'[财联社] 提取到 {len(topics)} 条')
+    return topics
+
+# ========== 国外论坛 (通过 RSS / 聚合站间接获取) ==========
+
 # 全球股市关键词（用于给国外新闻打标签 → 映射到 A 股概念）
 GLOBAL_KEYWORDS = {
     '半导体': ['semiconductor', 'chip', 'tsmc', 'samsung foundry', 'nvidia', 'amd', 'intel', 'broadcom', 'qualcomm', 'micron', 'hbm', 'wafer', 'asm lithography'],
@@ -233,11 +298,11 @@ GLOBAL_KEYWORDS = {
     '消费电子': ['apple', 'iphone', 'huawei', 'xiaomi', 'foldable', 'vr headset', 'vision pro', 'meta quest'],
     '机器人': ['robot', 'humanoid', 'figure', 'tesla optimus', 'servo', 'actuator'],
     '智能驾驶': ['autonomous', 'self-driving', 'lidar', 'robotaxi', 'fsd', 'waymo', 'driverless'],
-    '医药': ['biotech', 'pharma', 'crispr', 'glp-1', 'ozempic', 'wegovy', 'novo nordisk', 'eli lilly'],
+    '医药': ['biotech', 'pharma', 'crispr', 'glp-1', 'ozempic', 'wegovy', 'novo nordisk', 'eli lilly', 'fda', 'drug trial', 'astrazeneca', 'pfizer', 'merck', 'roche'],
     '军工': ['defense', 'drone', 'missile', 'fighter jet', 'palantir', 'lockheed', 'northrop'],
     '金融科技': ['fintech', 'crypto', 'bitcoin', 'blockchain', 'defi', 'stablecoin'],
     '量子计算': ['quantum', 'ionq', 'rigetti', 'd-wave', 'qubit'],
-    '航天': ['spacex', 'rocket', 'satellite', 'starlink', 'astra', 'orbital'],
+    '航天': ['spacex', 'rocket', 'satellite', 'starlink', 'orbital', 'space station', 'nasa launch'],
     '核能': ['nuclear', 'smr', 'oklo', 'nuscale', 'uranium'],
 }
 
@@ -428,11 +493,14 @@ def aggregate_results(all_topics, hot_stocks):
         elif 'negative' in s: sentiments['negative'] += 1
         else: sentiments['neutral'] += 1
 
-    # 热词排行
-    all_words = ' '.join(t['title'] for t in deduped)
+    # 热词排行（仅中文）
+    all_cn_text = ' '.join(t['title'] for t in deduped if any('\u4e00' <= c <= '\u9fff' for c in t['title']))
     word_freq = {}
-    for w in re.findall(r'[\u4e00-\u9fff]{2,4}', all_words):
-        if w not in ['一个', '什么', '怎么', '这个', '我们', '大家', '可以', '没有', '不是', '现在', '已经', '还是']:
+    for w in re.findall(r'[\u4e00-\u9fff]{2,6}', all_cn_text):
+        if w not in ['一个', '什么', '怎么', '这个', '我们', '大家', '可以', '没有', '不是', '现在', '已经', '还是',
+                      '因为', '所以', '如果', '但是', '而且', '然后', '可能', '应该', '需要', '非常', '比较',
+                      '自己', '他们', '进行', '使用', '通过', '相关', '主要', '目前', '其中', '其他',
+                      '不过', '而且', '只是', '就是', '还有', '来说', '到了', '对于', '以及', '一定']:
             word_freq[w] = word_freq.get(w, 0) + 1
     hot_words = sorted(word_freq.items(), key=lambda x: -x[1])[:20]
 
@@ -443,7 +511,7 @@ def aggregate_results(all_topics, hot_stocks):
         'summary': {
             'total_topics': len(deduped),
             'forums_crawled': list(set(t['source'] for t in deduped)),
-            'domestic_forums': len([t for t in deduped if t['source'] in ('eastmoney', 'xueqiu', 'xueqiu_discussion', 'taoguba')]),
+            'domestic_forums': len([t for t in deduped if t['source'] in ('eastmoney', 'xueqiu', 'xueqiu_discussion', 'taoguba', 'cls')]),
             'international_forums': len([t for t in deduped if t['source'] in ('cnbc', 'jin10', 'reddit_wsb', 'reddit_stocks')]),
             'dominant_sentiment': '偏乐观' if sentiments['positive'] > sentiments['negative'] else ('偏悲观' if sentiments['negative'] > sentiments['positive'] else '中性'),
             'sentiment_breakdown': sentiments,
@@ -479,6 +547,9 @@ def main(save=True):
     print('[论坛雷达] 抓取金十数据...')
     jin10_topics = fetch_jin10()
 
+    print('[论坛雷达] 抓取财联社...')
+    cls_topics = fetch_cls_telegraph()
+
     print('[论坛雷达] 抓取 Reddit WSB...')
     r_wsb = fetch_reddit_wsb()
 
@@ -486,7 +557,7 @@ def main(save=True):
     r_stocks = fetch_reddit_stocks()
 
     # 汇总
-    all_topics = em_topics + xq_topics + tg_topics + cnbc_topics + jin10_topics + r_wsb + r_stocks
+    all_topics = em_topics + xq_topics + tg_topics + cnbc_topics + jin10_topics + cls_topics + r_wsb + r_stocks
     result = aggregate_results(all_topics, em_stocks)
 
     elapsed = time.time() - start
