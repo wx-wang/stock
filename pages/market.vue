@@ -123,7 +123,7 @@ async function fetchIndices() {
 async function handleIndexSelect(idx: any) {
   selectedIdx.value = idx
   try {
-    const r = await fetch(`/api/trend/analyze?code=${encodeURIComponent(idx.code)}&type=index&kline=60`)
+    const r = await fetch(`/api/market/index-kline?code=${encodeURIComponent(idx.code)}&days=60`)
     const j = await r.json()
     if (j.kline) klineData.value = j.kline
   } catch {}
