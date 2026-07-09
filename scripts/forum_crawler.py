@@ -223,6 +223,182 @@ def fetch_taoguba():
     return topics
 
 
+# ========== 国外论坛 (通过 RSS / 聚合站间接获取) ==========
+
+# 全球股市关键词（用于给国外新闻打标签 → 映射到 A 股概念）
+GLOBAL_KEYWORDS = {
+    '半导体': ['semiconductor', 'chip', 'tsmc', 'samsung foundry', 'nvidia', 'amd', 'intel', 'broadcom', 'qualcomm', 'micron', 'hbm', 'wafer', 'asm lithography'],
+    'AI算力': ['ai chip', 'gpu', 'data center', 'server', 'cpo', 'optical', 'liquid cooling', 'h100', 'b200', 'gb300', 'hopper', 'blackwell', 'rubin'],
+    '新能源': ['solar', 'ev battery', 'lithium', 'tesla megapack', 'catl', 'byd', 'energy storage', 'solid state battery'],
+    '消费电子': ['apple', 'iphone', 'huawei', 'xiaomi', 'foldable', 'vr headset', 'vision pro', 'meta quest'],
+    '机器人': ['robot', 'humanoid', 'figure', 'tesla optimus', 'servo', 'actuator'],
+    '智能驾驶': ['autonomous', 'self-driving', 'lidar', 'robotaxi', 'fsd', 'waymo', 'driverless'],
+    '医药': ['biotech', 'pharma', 'crispr', 'glp-1', 'ozempic', 'wegovy', 'novo nordisk', 'eli lilly'],
+    '军工': ['defense', 'drone', 'missile', 'fighter jet', 'palantir', 'lockheed', 'northrop'],
+    '金融科技': ['fintech', 'crypto', 'bitcoin', 'blockchain', 'defi', 'stablecoin'],
+    '量子计算': ['quantum', 'ionq', 'rigetti', 'd-wave', 'qubit'],
+    '航天': ['spacex', 'rocket', 'satellite', 'starlink', 'astra', 'orbital'],
+    '核能': ['nuclear', 'smr', 'oklo', 'nuscale', 'uranium'],
+}
+
+
+def fetch_cnbc_rss():
+    """CNBC RSS — 美股最活跃的财经新闻源"""
+    topics = []
+    try:
+        req = Request('https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114',
+                      headers={'User-Agent': 'Mozilla/5.0'})
+        resp = urlopen(req, timeout=15, context=ssl_context())
+        xml = resp.read().decode('utf-8', errors='ignore')
+
+        # 提取标题
+        titles = re.findall(r'<title>([^<]+)</title>', xml)
+        for t in titles[1:21]:  # 跳过 RSS channel title
+            t = clean_text(t)
+            if len(t) > 10:
+                concepts = classify_topic_global(t)
+                topics.append({
+                    'title': t,
+                    'source': 'cnbc',
+                    'concepts': concepts if concepts else ['宏观/综合'],
+                    'sentiment': classify_sentiment_en(t),
+                })
+    except Exception as e:
+        print(f'[CNBC] RSS 失败: {type(e).__name__}: {e}')
+
+    print(f'[CNBC] 提取到 {len(topics)} 条')
+    return topics
+
+
+def fetch_jin10():
+    """金十数据 — 中文国际财经快讯聚合（含 A 股+美股+原油+外汇）"""
+    topics = []
+    try:
+        req = Request('https://www.jin10.com/', headers=HEADERS)
+        resp = urlopen(req, timeout=15, context=ssl_context())
+        html = resp.read().decode('utf-8', errors='ignore')
+
+        # 金十首页 flash-news 快讯列表
+        flash_items = re.findall(r'class="jin_flash_item[^"]*"[^>]*>(.*?)</div>', html, re.S)
+        for item in flash_items[:15]:
+            text = clean_text(item)
+            if len(text) > 6:
+                topics.append({
+                    'title': text[:120],
+                    'source': 'jin10',
+                    'concepts': classify_topic(text),  # 中文已支持
+                    'sentiment': classify_sentiment(text),
+                })
+
+        # 也找普通标题
+        titles = re.findall(r'<a[^>]*title="([^"]{6,})"[^>]*>', html)
+        for t in titles[:10]:
+            if t not in {topic['title'][:20] for topic in topics}:
+                concepts = classify_topic(t)
+                topics.append({
+                    'title': t[:120],
+                    'source': 'jin10',
+                    'concepts': concepts if concepts else ['宏观/综合'],
+                    'sentiment': classify_sentiment(t),
+                })
+    except Exception as e:
+        print(f'[金十] 失败: {type(e).__name__}: {e}')
+
+    print(f'[金十] 提取到 {len(topics)} 条')
+    return topics
+
+
+def fetch_reddit_wsb():
+    """Reddit WallStreetBets — 通过 old.reddit.com JSON API（不需要 token）"""
+    topics = []
+    try:
+        url = 'https://old.reddit.com/r/wallstreetbets/hot.json?limit=15'
+        req = Request(url, headers={
+            'User-Agent': 'python:forum_crawler:v1.0 (by /u/stock_bot)',
+        })
+        resp = urlopen(req, timeout=15, context=ssl_context())
+        data = json.loads(resp.read())
+        children = data.get('data', {}).get('children', [])
+        for item in children:
+            post = item.get('data', {})
+            title = post.get('title', '')
+            selftext = post.get('selftext', '') or ''
+            if title:
+                concepts = classify_topic_global(title + ' ' + selftext)
+                topics.append({
+                    'title': title[:150],
+                    'desc': selftext[:120] if selftext else '',
+                    'source': 'reddit_wsb',
+                    'concepts': concepts if concepts else ['个股讨论'],
+                    'sentiment': classify_sentiment_en(title),
+                })
+    except Exception as e:
+        print(f'[Reddit WSB] 失败: {type(e).__name__}: {e}')
+
+    print(f'[Reddit WSB] 提取到 {len(topics)} 条')
+    return topics
+
+
+def fetch_reddit_stocks():
+    """Reddit r/stocks — 更偏基本面讨论"""
+    topics = []
+    try:
+        url = 'https://old.reddit.com/r/stocks/hot.json?limit=10'
+        req = Request(url, headers={
+            'User-Agent': 'python:forum_crawler:v1.0 (by /u/stock_bot)',
+        })
+        resp = urlopen(req, timeout=15, context=ssl_context())
+        data = json.loads(resp.read())
+        children = data.get('data', {}).get('children', [])
+        for item in children:
+            post = item.get('data', {})
+            title = post.get('title', '')
+            if title and len(title) > 10:
+                concepts = classify_topic_global(title)
+                topics.append({
+                    'title': title[:150],
+                    'source': 'reddit_stocks',
+                    'concepts': concepts if concepts else ['个股讨论'],
+                    'sentiment': classify_sentiment_en(title),
+                })
+    except Exception as e:
+        print(f'[Reddit stocks] 失败: {type(e).__name__}: {e}')
+
+    print(f'[Reddit stocks] 提取到 {len(topics)} 条')
+    return topics
+
+
+# ========== 英文情绪/话题分析 ==========
+
+def classify_topic_global(text):
+    """用英文关键词词典给论坛帖子打标签"""
+    combined = text.lower()
+    matches = []
+    for category, keywords in GLOBAL_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw.lower() in combined)
+        if score > 0:
+            matches.append((category, score))
+    matches.sort(key=lambda x: -x[1])
+    return [m[0] for m in matches[:3]]
+
+
+def classify_sentiment_en(text):
+    """英文情绪分析"""
+    text_lower = text.lower()
+    bull_words = ['bullish', '🚀', 'moon', 'to the moon', 'rocket', 'breakout', 'beat earnings',
+                  'upgrade', 'buy', 'long', 'yolo', 'calls', 'green', 'ATH', 'all time high']
+    bear_words = ['bearish', 'crash', 'dump', 'short', 'puts', 'bagholder', 'rug pull',
+                  'downgrade', 'sell', 'bankrupt', 'delist', 'red', 'bleeding']
+
+    pos = sum(1 for w in bull_words if w in text_lower)
+    neg = sum(1 for w in bear_words if w in text_lower)
+    if pos > neg + 2: return 'positive'
+    if neg > pos + 2: return 'negative'
+    if pos > neg: return 'slightly_positive'
+    if neg > pos: return 'slightly_negative'
+    return 'neutral'
+
+
 # ========== 汇总 & 分析 ==========
 
 def aggregate_results(all_topics, hot_stocks):
@@ -267,6 +443,8 @@ def aggregate_results(all_topics, hot_stocks):
         'summary': {
             'total_topics': len(deduped),
             'forums_crawled': list(set(t['source'] for t in deduped)),
+            'domestic_forums': len([t for t in deduped if t['source'] in ('eastmoney', 'xueqiu', 'xueqiu_discussion', 'taoguba')]),
+            'international_forums': len([t for t in deduped if t['source'] in ('cnbc', 'jin10', 'reddit_wsb', 'reddit_stocks')]),
             'dominant_sentiment': '偏乐观' if sentiments['positive'] > sentiments['negative'] else ('偏悲观' if sentiments['negative'] > sentiments['positive'] else '中性'),
             'sentiment_breakdown': sentiments,
         },
@@ -295,8 +473,20 @@ def main(save=True):
     print('[论坛雷达] 抓取淘股吧...')
     tg_topics = fetch_taoguba()
 
+    print('[论坛雷达] 抓取 CNBC RSS...')
+    cnbc_topics = fetch_cnbc_rss()
+
+    print('[论坛雷达] 抓取金十数据...')
+    jin10_topics = fetch_jin10()
+
+    print('[论坛雷达] 抓取 Reddit WSB...')
+    r_wsb = fetch_reddit_wsb()
+
+    print('[论坛雷达] 抓取 Reddit r/stocks...')
+    r_stocks = fetch_reddit_stocks()
+
     # 汇总
-    all_topics = em_topics + xq_topics + tg_topics
+    all_topics = em_topics + xq_topics + tg_topics + cnbc_topics + jin10_topics + r_wsb + r_stocks
     result = aggregate_results(all_topics, em_stocks)
 
     elapsed = time.time() - start
