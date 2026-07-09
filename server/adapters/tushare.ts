@@ -248,3 +248,56 @@ export function getBalancesheet(tsCode: string, startDate: string, endDate: stri
   return callTushare('balancesheet', { ts_code: tsCode, start_date: startDate, end_date: endDate },
     'ts_code,ann_date,end_date,report_type,total_assets,total_liab,total_hldr_eqy_exc_min_int', { ttl: 60 * 60 * 1000 })
 }
+
+// ========== 大盘分析新增方法 ==========
+
+/** 同花顺板块指数列表（概念/行业） */
+export function getThsIndex(type: 'N' | 'I' | 'R' | 'S' | 'ST' | 'TH' | 'BB'): Promise<any[]> {
+  return callTushare('ths_index', { type, exchange: 'A' },
+    'ts_code,name,count,type', { ttl: 24 * 3600 * 1000 })
+}
+
+/** 同花顺板块日行情 */
+export function getThsDaily(tsCode: string, startDate: string, endDate: string): Promise<any[]> {
+  return callTushare('ths_daily', { ts_code: tsCode, start_date: startDate, end_date: endDate },
+    'ts_code,trade_date,close,open,high,low,pre_close,pct_change,vol,total_mv,float_mv',
+    { ttl: 30 * 60 * 1000 })
+}
+
+/** 同花顺板块日行情（批量，用逗号分隔 ts_code） */
+export async function getThsDailyBatch(tsCodes: string[], date: string): Promise<Map<string, any>> {
+  const result = new Map<string, any>()
+  const CHUNK = 100  // ths_daily 单次 max 3000, 100概念 × 1天 = 安全
+  for (let i = 0; i < tsCodes.length; i += CHUNK) {
+    const chunk = tsCodes.slice(i, i + CHUNK)
+    const items = await callTushare('ths_daily',
+      { ts_code: chunk.join(','), trade_date: date },
+      'ts_code,trade_date,close,pct_change,vol,total_mv', { ttl: 30 * 60 * 1000 })
+    for (const item of items) result.set(item.ts_code, item)
+  }
+  return result
+}
+
+/** 涨跌停列表 */
+export function getLimitList(tradeDate: string, limitType: 'U' | 'D'): Promise<any[]> {
+  return callTushare('limit_list_d', { trade_date: tradeDate, limit_type: limitType },
+    'ts_code,trade_date,limit', { ttl: 4 * 3600 * 1000 })
+}
+
+/** 融资融券日数据 */
+export function getMargin(tradeDate: string): Promise<any[]> {
+  return callTushare('margin', { trade_date: tradeDate },
+    'trade_date,rzye,rqye,rzmre,rqmcl', { ttl: 4 * 3600 * 1000 })
+}
+
+/** 沪深港通资金流 */
+export function getMoneyflowHsgt(startDate: string, endDate: string): Promise<any[]> {
+  return callTushare('moneyflow_hsgt', { start_date: startDate, end_date: endDate },
+    'trade_date,north_money,south_money', { ttl: 4 * 3600 * 1000 })
+}
+
+/** 全市场日行情（不传 ts_code = 全量），用于涨跌家数 */
+export function getDailyAll(tradeDate: string): Promise<any[]> {
+  return callTushare('daily', { trade_date: tradeDate },
+    'ts_code,pct_chg', { ttl: 4 * 3600 * 1000 })
+}

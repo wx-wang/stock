@@ -12,6 +12,7 @@ export {
   getDailyBatch,
   getDailyBasic,
   getDailyBasicAll,
+  getDailyAll,
   getIndexDaily,
   getBondYield,
   getIncome,
@@ -23,4 +24,10 @@ export {
   getBrokerRecommend,
   getIndexMember,
   getIdxFactorPro,
+  getThsIndex,
+  getThsDaily,
+  getThsDailyBatch,
+  getLimitList,
+  getMargin,
+  getMoneyflowHsgt,
 } from '../adapters/tushare'
