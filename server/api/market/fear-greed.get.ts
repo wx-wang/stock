@@ -11,7 +11,7 @@
  *
  * 缓存：5 分钟磁盘
  */
-import { getMoneyflowHsgt, getMargin } from '@/server/adapters/tushare'
+import { getMoneyflowHsgt, getMargin, getIndexDaily } from '@/server/adapters/tushare'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { PERSIST_DIR } from '../../config'
@@ -85,33 +85,31 @@ export default defineEventHandler(async () => {
       console.error('[fear-greed] margin failed:', e.message)
     }
 
-    // ── 维度 5+6: 市场宽度 + 量能（复用 index-kline API，已验证可用） ──
+    // ── 维度 5+6: 市场宽度 + 量能（直调 Tushare index_daily 获取 HS300 行情） ──
     let marketWidth = 50, volumeScore = 50
     try {
-      const baseUrl = process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-      const resp = await fetch(`${baseUrl}/api/market/index-kline?code=000300.SH&days=30`)
-      const data = await resp.json()
-      if (data?.kline?.length >= 21) {
-        const kline = data.kline
-        const closes = kline.map((r: any) => Number(r.close) || 0)
+      const kline = await getIndexDaily('000300.SH', fmtDate(d35), today)
+      if (kline && kline.length >= 21) {
+        const closes = kline.map((r: any) => Number(r.close) || 0).filter((c: number) => c > 0)
         const amounts = kline.map((r: any) => Number(r.amount) || 0)
 
-        // 市场宽度：close vs MA20
         const ma20 = closes.slice(-20).reduce((a: number, b: number) => a + b, 0) / 20
         const latestClose = closes[closes.length - 1]
         const ratio = latestClose / (ma20 || 1)
         marketWidth = Math.round(Math.max(0, Math.min(100, 50 + (ratio - 1) * 200)))
-        console.log(`[fear-greed] HS300 close/MA20: ${ratio.toFixed(3)} → ${marketWidth}`)
+        console.log(`[fear-greed] HS300 close=${latestClose} MA20=${ma20.toFixed(1)} ratio=${ratio.toFixed(3)} → ${marketWidth}`)
 
-        // 量能：成交额 vs 20日均量
-        const avg20Amt = amounts.slice(-21, -1).reduce((a: number, b: number) => a + b, 0) / 20
+        // 量能
+        const avg20Amt = amounts.filter((a: number) => a > 0).slice(-21, -1).reduce((a: number, b: number) => a + b, 0) / 20
         const latestAmt = amounts[amounts.length - 1]
         const volRatio = avg20Amt > 0 ? latestAmt / avg20Amt : 1
         volumeScore = Math.round(Math.max(0, Math.min(100, (volRatio - 0.5) / 1.5 * 100)))
-        console.log(`[fear-greed] HS300 vol/avg: ${volRatio.toFixed(2)}x → ${volumeScore}`)
+        console.log(`[fear-greed] HS300 amount latest=${latestAmt} avg20=${avg20Amt.toFixed(1)} ratio=${volRatio.toFixed(2)} → ${volumeScore}`)
+      } else {
+        console.warn(`[fear-greed] index_daily returned ${kline?.length || 0} rows for 000300.SH`)
       }
     } catch (e: any) {
-      console.error('[fear-greed] HS300 kline fetch failed:', e.message)
+      console.error('[fear-greed] index_daily failed:', e.message || e)
     }
 
     // ── 加权合成 ──
