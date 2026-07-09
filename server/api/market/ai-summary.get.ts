@@ -2,7 +2,7 @@
  * GET /api/market/ai-summary — DeepSeek AI 大盘总结
  * 缓存：4 小时磁盘
  */
-import { DEEPSEEK_API_KEY, DEEPSEEK_API_URL, DEEPSEEK_MODEL } from '../../config'
+import { DEEPSEEK_API_URL, DEEPSEEK_MODEL } from '../../config'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { PERSIST_DIR } from '../../config'
@@ -34,8 +34,9 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const apiKey = process.env.DEEPSEEK_API_KEY || DEEPSEEK_API_KEY
-    if (!apiKey || apiKey === '你的DeepSeek_API_Key') {
+    const apiKey = process.env.DEEPSEEK_API_KEY || process.env.NUXT_DEEPSEEK_API_KEY || ''
+    if (!apiKey) {
+      console.warn('[ai-summary] 未配置 DEEPSEEK_API_KEY，返回空')
       return { headline: 'AI 未配置', narrative: '请在 .env 中设置 DEEPSEEK_API_KEY', breadth: '', trendAlignment: '', riskFlags: [], position: '', _ts: Date.now() }
     }
 
