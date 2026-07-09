@@ -400,8 +400,9 @@ function computeBacktest(computedDays: ComputedDay[]): BacktestResult {
           buyIdx: i + 1,
         }
         holding = true
+        continue  // 买入成功才跳过，避免重复入场
       }
-      continue
+      // next.open ≤ 0 时不 continue：数据缺口不吞信号，下次循环重试
     }
 
     // ── 出场信号：昨天沸/热/温、今天平/凉/寒 → T+1 开盘卖出 ──
@@ -419,8 +420,9 @@ function computeBacktest(computedDays: ComputedDay[]): BacktestResult {
           })
           currentTrade = null
           holding = false
+          continue  // 卖出成功才跳过
         }
-        continue
+        // next.open ≤ 0 时不 continue：数据缺口不吞信号
       }
     }
   }
