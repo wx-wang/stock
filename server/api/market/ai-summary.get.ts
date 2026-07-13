@@ -142,7 +142,8 @@ async function buildDataContext(): Promise<string | null> {
     if (fg?.success) {
       const comps = fg.components || {}
       fgStr = `综合指数${fg.index}分(${fg.label})
-  分项: 涨跌比${comps.breadth || '?'}/100, 涨停跌停比${comps.limitRatio || '?'}/100, 北向资金${comps.northFlow || '?'}/100, 融资${comps.marginChange || '?'}/100, 市场宽度${comps.marketWidth || '?'}/100, 量能${comps.volumeRatio || '?'}/100`
+  分项: 市场广度${comps.breadth ?? '?'}/100, 赚钱效应${comps.profitEffect ?? '?'}/100, 风险偏好${comps.riskAppetite ?? '?'}/100, 资金行为${comps.fundFlow ?? '?'}/100, 拥挤修正${comps.crowding ?? '?'}/100
+  依据: ${(fg.explain || []).join('；') || 'N/A'}`
     }
 
     // ── 6. 股债利差（仓位参考的关键数据） ──

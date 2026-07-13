@@ -27,7 +27,14 @@
 interface FGData { success: boolean; index: number; label: string; level: string; components: Record<string,number> }
 defineProps<{ data: FGData | null }>()
 const labelMap: Record<string,string> = {
-  breadth: '涨跌比', limitRatio: '涨停/跌停', hs300Chg: '沪深300', volume: '成交额',
+  breadth: '市场广度',
+  profitEffect: '赚钱效应',
+  riskAppetite: '风险偏好',
+  fundFlow: '资金行为',
+  crowding: '拥挤修正',
+  limitRatio: '涨停/跌停',
+  hs300Chg: '沪深300',
+  volume: '成交额',
 }
 </script>
 
