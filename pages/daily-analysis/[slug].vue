@@ -223,6 +223,7 @@ const report = computed(() => data.value?.report || null)
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: 4px;
+  color: var(--color-ink);
   padding: 1px 5px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.92em;
@@ -230,8 +231,8 @@ const report = computed(() => data.value?.report || null)
 
 .daily-content :deep(pre) {
   overflow-x: auto;
-  background: #2B241C;
-  border: 1px solid var(--border-color);
+  background: #2F261E;
+  border: 1px solid rgba(43, 36, 28, 0.24);
   border-radius: var(--radius-sm);
   padding: 14px;
   margin: 16px 0;
@@ -239,6 +240,7 @@ const report = computed(() => data.value?.report || null)
 
 .daily-content :deep(pre code) {
   border: 0;
+  color: #F8EEDC;
   padding: 0;
   background: transparent;
 }

@@ -55,9 +55,7 @@ html.light-theme .bottom-tabs { border-top-color: var(--border-color); }
 html, body, #__nuxt {
   height: 100%;
   font-family: "LXGW WenKai Screen", "Kaiti SC", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(184,135,45,0.10), transparent 30%),
-    linear-gradient(180deg, #F8F1E6 0%, var(--bg-primary) 48%, #F1E3CF 100%);
+  background: var(--bg-primary);
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.5;
@@ -78,10 +76,7 @@ a:hover { color: var(--color-accent-hover); }
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(216,205,187,0.42) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(216,205,187,0.26) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background: var(--bg-primary);
 }
 
 /* ===== Sidebar ===== */
