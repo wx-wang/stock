@@ -13,6 +13,34 @@
  * 具体命令见 DEPLOY.md。
  */
 
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
+
+function loadLocalEnv() {
+  const envPath = path.resolve(process.cwd(), '.env')
+  if (!existsSync(envPath)) return
+
+  const raw = readFileSync(envPath, 'utf-8')
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+
+    const eq = trimmed.indexOf('=')
+    if (eq === -1) continue
+
+    const key = trimmed.slice(0, eq).trim()
+    let value = trimmed.slice(eq + 1).trim()
+    if (!key || process.env[key] !== undefined) continue
+
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1)
+    }
+    process.env[key] = value
+  }
+}
+
+loadLocalEnv()
+
 export const TUSHARE_URL = process.env.TUSHARE_URL || ''
 export const TUSHARE_TOKEN = process.env.TUSHARE_TOKEN || ''
 
