@@ -16,6 +16,9 @@
         <NuxtLink to="/sector-rotation" class="nav-item" :class="{ active: uiStore.activeNav === 'sector' }" @click="uiStore.setActiveNav('sector')">
           <span class="nav-icon">🔄</span> 行业轮动
         </NuxtLink>
+        <NuxtLink to="/industry-reports" class="nav-item" :class="{ active: uiStore.activeNav === 'industry-reports' }" @click="uiStore.setActiveNav('industry-reports')">
+          <span class="nav-icon">📚</span> 行业报告
+        </NuxtLink>
         <NuxtLink to="/market" class="nav-item" :class="{ active: uiStore.activeNav === 'market' }" @click="uiStore.setActiveNav('market')">
           <span class="nav-icon">🌍</span> 大盘分析
         </NuxtLink>
@@ -65,6 +68,10 @@
         <span class="tab-icon">🔄</span>
         <span class="tab-label">行业</span>
       </NuxtLink>
+      <NuxtLink to="/industry-reports" class="tab-item" :class="{ active: uiStore.activeNav === 'industry-reports' }" @click="uiStore.setActiveNav('industry-reports')">
+        <span class="tab-icon">📚</span>
+        <span class="tab-label">报告</span>
+      </NuxtLink>
       <NuxtLink to="/market" class="tab-item" :class="{ active: uiStore.activeNav === 'market' }" @click="uiStore.setActiveNav('market')">
         <span class="tab-icon">🌍</span>
         <span class="tab-label">大盘</span>
@@ -89,6 +96,7 @@ const pageTitle = computed(() => {
     screener: '股票一览表',
     trend: '趋势分析',
     sector: '行业轮动',
+    'industry-reports': '行业报告',
     market: '大盘分析',
     'broker-golden': '券商金股',
   }

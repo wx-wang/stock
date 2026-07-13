@@ -634,7 +634,7 @@ a:hover { color: var(--color-accent-hover); }
   background: var(--bg-sidebar);
   border-top: 1px solid rgba(255,255,255,0.08);
   z-index: 900;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
   padding: 0 4px;
   padding-bottom: env(safe-area-inset-bottom, 0);
@@ -649,7 +649,8 @@ a:hover { color: var(--color-accent-hover); }
   cursor: pointer;
   font-size: 10px;
   transition: all var(--transition);
-  min-width: 48px;
+  min-width: 44px;
+  flex: 1;
 }
 
 .tab-item.active { color: var(--color-accent); }
