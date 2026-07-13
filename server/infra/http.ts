@@ -33,6 +33,10 @@ export async function httpPost(url: string, body: Record<string, any>, timeoutSe
           // code 28 = curl timeout; 其他 = 网络/代理错误
           if ((err as any).code === 28 || (err as any).killed) {
             console.error(`[httpPost] timeout: ${body.api_name || '?'} after ${timeoutSec}s`)
+          } else {
+            const stderr = String((err as any).stderr || '').slice(0, 200)
+            const message = String((err as any).message || '').slice(0, 200)
+            console.error(`[httpPost] failed: api=${body.api_name || '?'} code=${(err as any).code || '?'} urlSet=${url ? 'yes' : 'no'} message=${message} stderr=${stderr}`)
           }
           resolve('')
           return
@@ -65,5 +69,8 @@ export async function httpGetJson(url: string, timeoutSec?: number): Promise<any
 export async function httpPostJson(url: string, body: Record<string, any>, timeoutSec?: number): Promise<any> {
   const raw = await httpPost(url, body, timeoutSec)
   if (!raw) return null
-  try { return JSON.parse(raw) } catch { return null }
+  try { return JSON.parse(raw) } catch {
+    console.error(`[httpPostJson] parse failed: api=${body.api_name || '?'} raw=${raw.slice(0, 200)}`)
+    return null
+  }
 }

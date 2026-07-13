@@ -47,12 +47,19 @@ export async function callTushare(
   const body: Record<string, any> = { api_name: apiName, token: TUSHARE_TOKEN, params }
   if (fields) body.fields = fields
 
+  if (!TUSHARE_URL || !TUSHARE_TOKEN) {
+    console.error(`[tushare] missing config: api=${apiName} urlSet=${TUSHARE_URL ? 'yes' : 'no'} tokenLen=${TUSHARE_TOKEN.length}`)
+  }
+
   const json = await httpPostJson(TUSHARE_URL, body, 60)
 
   // 标准化响应格式 → 统一返回对象数组
   let items: any[] = []
   if (!json) {
     // curl 失败或 JSON 解析失败
+    console.error(`[tushare] empty response: api=${apiName} urlSet=${TUSHARE_URL ? 'yes' : 'no'} tokenLen=${TUSHARE_TOKEN.length}`)
+  } else if (json.code && json.code !== 0) {
+    console.error(`[tushare] api error: api=${apiName} code=${json.code} msg=${json.msg || ''}`)
   } else if (json.data?.fields && json.data?.items) {
     const fields: string[] = json.data.fields
     items = json.data.items.map((row: any[]) => {
@@ -64,6 +71,10 @@ export async function callTushare(
     items = json.data.items
   } else if (Array.isArray(json.data)) {
     items = json.data
+  }
+
+  if (json && items.length === 0) {
+    console.error(`[tushare] no items: api=${apiName} code=${json.code ?? 'n/a'} msg=${json.msg || ''} dataKeys=${json.data ? Object.keys(json.data).join(',') : 'none'}`)
   }
 
   if (cache && items.length > 0) memSet(key, items, ttl)

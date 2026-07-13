@@ -44,6 +44,10 @@ loadLocalEnv()
 export const TUSHARE_URL = process.env.TUSHARE_URL || ''
 export const TUSHARE_TOKEN = process.env.TUSHARE_TOKEN || ''
 
+console.log(
+  `[config] cwd=${process.cwd()} TUSHARE_URL=${TUSHARE_URL ? 'set' : 'missing'} TUSHARE_TOKEN_LEN=${TUSHARE_TOKEN.length}`,
+)
+
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '你的DeepSeek_API_Key'
 export const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions'
 export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
