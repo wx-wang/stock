@@ -19,6 +19,9 @@
         <NuxtLink to="/industry-reports" class="nav-item" :class="{ active: uiStore.activeNav === 'industry-reports' }" @click="uiStore.setActiveNav('industry-reports')">
           <span class="nav-icon">📚</span> 行业报告
         </NuxtLink>
+        <NuxtLink to="/daily-analysis" class="nav-item" :class="{ active: uiStore.activeNav === 'daily-analysis' }" @click="uiStore.setActiveNav('daily-analysis')">
+          <span class="nav-icon">🗓️</span> 每日分析
+        </NuxtLink>
         <NuxtLink to="/market" class="nav-item" :class="{ active: uiStore.activeNav === 'market' }" @click="uiStore.setActiveNav('market')">
           <span class="nav-icon">🌍</span> 大盘分析
         </NuxtLink>
@@ -72,6 +75,10 @@
         <span class="tab-icon">📚</span>
         <span class="tab-label">报告</span>
       </NuxtLink>
+      <NuxtLink to="/daily-analysis" class="tab-item" :class="{ active: uiStore.activeNav === 'daily-analysis' }" @click="uiStore.setActiveNav('daily-analysis')">
+        <span class="tab-icon">🗓️</span>
+        <span class="tab-label">每日</span>
+      </NuxtLink>
       <NuxtLink to="/market" class="tab-item" :class="{ active: uiStore.activeNav === 'market' }" @click="uiStore.setActiveNav('market')">
         <span class="tab-icon">🌍</span>
         <span class="tab-label">大盘</span>
@@ -97,6 +104,7 @@ const pageTitle = computed(() => {
     trend: '趋势分析',
     sector: '行业轮动',
     'industry-reports': '行业报告',
+    'daily-analysis': '每日分析',
     market: '大盘分析',
     'broker-golden': '券商金股',
   }

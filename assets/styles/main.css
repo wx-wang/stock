@@ -642,18 +642,18 @@ a:hover { color: var(--color-accent-hover); }
 
 .tab-item {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 6px 8px;
+  padding: 6px 4px;
   border-radius: 6px;
   color: var(--text-secondary);
   text-decoration: none;
   cursor: pointer;
   font-size: 10px;
   transition: all var(--transition);
-  min-width: 44px;
+  min-width: 38px;
   flex: 1;
 }
 
 .tab-item.active { color: var(--color-accent); }
 
-.tab-item .tab-icon { font-size: 20px; line-height: 1; }
+.tab-item .tab-icon { font-size: 18px; line-height: 1; }
 .tab-item .tab-label { font-size: 10px; font-weight: 500; }
