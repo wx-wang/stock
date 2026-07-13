@@ -95,6 +95,32 @@ curl -s "http://127.0.0.1:80/api/sectors/capm?days=60&force=true" | head -5
 
 # 测试个股推荐
 curl -s "http://127.0.0.1:80/api/stocks/sector-picks?days=60&force=true" | python3 -m json.tool | head -30
+
+# 手动刷新论坛舆情雷达
+python3 scripts/forum_crawler.py
+curl -s http://127.0.0.1:80/api/market/forum-sentiment | python3 -m json.tool | head -60
+```
+
+### 论坛舆情定时任务
+
+论坛舆情雷达采用“定时采集 + 文件缓存 + 页面读取”的方式，避免用户访问页面时实时爬取外部论坛。
+
+```bash
+mkdir -p /home/stock/logs
+crontab -e
+```
+
+建议交易日跑 4 次：
+
+```cron
+15 9,12,15,20 * * 1-5 cd /home/stock && python3 scripts/forum_crawler.py >> logs/forum_crawler.log 2>&1
+```
+
+如果想手动触发，也可以访问：
+
+```bash
+# 需要先在 .env 中配置 FORUM_REFRESH_KEY=一段随机字符串
+curl -s "http://127.0.0.1:80/api/market/forum-sentiment?refresh=1&key=$FORUM_REFRESH_KEY" | python3 -m json.tool | head -60
 ```
 
 ---
@@ -109,6 +135,7 @@ curl -s "http://127.0.0.1:80/api/stocks/sector-picks?days=60&force=true" | pytho
 | `idx-factor-cache.json` | CAPM computeCrowding | 增量缓存，只补新增交易日 |
 | `market-crowding.json` | /api/market/crowding | 30 分钟 TTL |
 | `screener-overview.json` | /api/screener/overview | 访问筛选页面时构建 |
+| `forum-radar/latest.json` | scripts/forum_crawler.py | cron 定时采集；同时兼容写入 `forum-data.json` |
 
 ---
 

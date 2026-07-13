@@ -1,7 +1,10 @@
 <template>
   <div class="forum-section">
     <h2 class="section-title">📡 论坛舆情雷达</h2>
-    <p class="section-sub">实时追踪国内外投资论坛讨论热点</p>
+    <p class="section-sub">
+      多源缓存追踪国内外投资讨论热点
+      <span v-if="data?.generated_at" class="updated">更新 {{ formatTime(data.generated_at) }}</span>
+    </p>
 
     <div v-if="!data || !data.success" class="empty">
       {{ data?.message || '暂无舆情数据，请先在服务器运行 python3 scripts/forum_crawler.py' }}
@@ -31,6 +34,32 @@
       <!-- ── 来源标签 ── -->
       <div class="source-tags">
         <span v-for="s in data.summary?.forums_crawled" :key="s" class="src-tag" :class="srcClass(s)">{{ srcLabel(s) }}</span>
+        <span v-for="s in failedSources" :key="s.source" class="src-tag failed" :title="s.message">{{ s.label }}未取到</span>
+      </div>
+
+      <!-- ── 热门股票 ── -->
+      <div class="stocks-panel" v-if="data.hot_stocks?.length">
+        <div class="panel-head">
+          <h3 class="panel-title">⭐ 热门股票</h3>
+          <span class="panel-note">按来源权重、热度、提及次数合成</span>
+        </div>
+        <div class="stock-list">
+          <div v-for="(s, i) in data.hot_stocks.slice(0, 12)" :key="`${s.market}-${s.symbol}`" class="stock-row">
+            <span class="stock-rank" :class="{ top3: i < 3 }">{{ i + 1 }}</span>
+            <div class="stock-main">
+              <div class="stock-name-line">
+                <span class="stock-name">{{ s.name }}</span>
+                <span class="stock-code">{{ s.symbol }}</span>
+                <span class="stock-market">{{ s.market }}</span>
+              </div>
+              <div class="stock-reason">{{ (s.topics || [])[0] || sourceNames(s.sources) }}</div>
+            </div>
+            <div class="stock-side">
+              <span class="stock-heat">{{ Math.round(s.heat || 0) }}</span>
+              <span class="stock-sent" :class="{ pos: s.sentiment === '偏多', neg: s.sentiment === '偏空' }">{{ s.sentiment || '中性' }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ── 情绪分解 ── -->
@@ -101,6 +130,14 @@ import { computed } from 'vue'
 
 const props = defineProps<{ data: any }>()
 
+const failedSources = computed(() => {
+  const status = props.data?.source_status || {}
+  return Object.entries(status)
+    .filter(([, v]: any) => !v?.ok)
+    .map(([source, v]: any) => ({ source, label: v?.label || srcLabel(source), message: v?.message || '' }))
+    .slice(0, 4)
+})
+
 const sentimentClass = computed(() => {
   const s = props.data?.summary?.dominant_sentiment
   if (!s) return ''
@@ -138,20 +175,33 @@ function kwOpacity(count: number): number {
 }
 
 function srcClass(src: string): string {
-  if (['cnbc', 'reddit_wsb', 'reddit_stocks'].includes(src)) return 'intl'
+  if (['cnbc', 'marketwatch', 'reddit_wsb', 'reddit_stocks', 'stocktwits'].includes(src)) return 'intl'
   if (['jin10'].includes(src)) return 'intl-cn'
-  if (['cls'].includes(src)) return 'cn'
+  if (['cls', 'eastmoney_flow', 'eastmoney_sector', 'eastmoney_concept', 'tushare_dc_hot'].includes(src)) return 'cn'
   return 'cn'
 }
 
 function srcLabel(src: string): string {
   const map: Record<string, string> = {
     eastmoney: '东方财富', xueqiu: '雪球', xueqiu_discussion: '雪球讨论',
+    eastmoney_flow: '东财资金流', eastmoney_sector: '东财行业', eastmoney_concept: '东财概念',
+    tushare_dc_hot: '东财热榜',
     taoguba: '淘股吧', cnbc: 'CNBC', jin10: '金十数据',
-    reddit_wsb: 'Reddit WSB', reddit_stocks: 'Reddit Stocks',
+    reddit_wsb: 'Reddit WSB', reddit_stocks: 'Reddit Stocks', stocktwits: 'Stocktwits',
+    marketwatch: 'MarketWatch',
     cls: '财联社',
   }
   return map[src] || src
+}
+
+function sourceNames(sources: string[] = []): string {
+  return sources.map(srcLabel).join(' / ')
+}
+
+function formatTime(v: string): string {
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return v
+  return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
@@ -159,6 +209,7 @@ function srcLabel(src: string): string {
 .forum-section { margin-bottom: 24px; }
 .section-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
 .section-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
+.updated { color: var(--text-muted); margin-left: 8px; }
 .empty { font-size: 12px; color: var(--text-secondary); padding: 20px 0; text-align: center; }
 .empty-sm { font-size: 12px; color: #6b7280; padding: 12px 0; text-align: center; }
 
@@ -177,6 +228,27 @@ function srcLabel(src: string): string {
 .src-tag.cn { background: rgba(239,68,68,0.12); color: #f87171; }
 .src-tag.intl { background: rgba(59,130,246,0.12); color: #60a5fa; }
 .src-tag.intl-cn { background: rgba(168,85,247,0.12); color: #c084fc; }
+.src-tag.failed { background: rgba(107,114,128,0.12); color: #9ca3af; }
+
+/* ── 热门股票 ── */
+.stocks-panel { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+.panel-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 10px; }
+.panel-head .panel-title { margin-bottom: 0; }
+.panel-note { font-size: 11px; color: var(--text-muted); }
+.stock-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stock-row { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 8px; min-width: 0; }
+.stock-rank { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 11px; font-weight: 700; color: #6b7280; background: rgba(255,255,255,0.04); }
+.stock-rank.top3 { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.stock-main { min-width: 0; }
+.stock-name-line { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.stock-name { color: var(--text-primary); font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stock-code, .stock-market { color: var(--text-muted); font-size: 10px; flex-shrink: 0; }
+.stock-reason { color: var(--text-secondary); font-size: 11px; line-height: 1.4; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stock-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.stock-heat { color: #fbbf24; font-size: 15px; font-weight: 800; line-height: 1; }
+.stock-sent { color: #9ca3af; font-size: 10px; }
+.stock-sent.pos { color: #4CAF50; }
+.stock-sent.neg { color: #F44336; }
 
 /* ── 情绪条 ── */
 .sentiment-bar { display: flex; height: 24px; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
@@ -228,7 +300,9 @@ function srcLabel(src: string): string {
 
 @media (max-width: 768px) {
   .forum-grid { grid-template-columns: 1fr; }
+  .stock-list { grid-template-columns: 1fr; }
   .overview-bar { flex-wrap: wrap; }
   .ov-item { flex: 1 1 45%; }
+  .panel-head { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 </style>
