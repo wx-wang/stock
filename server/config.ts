@@ -2,24 +2,19 @@
  * config.ts — 全局配置单一入口
  *
  * 所有外部 API 的凭据、端点统一在此定义。
- * 优先级：环境变量 > 默认值（开发用）
+ * 优先级：环境变量 > 空值。
  *
  * 替换方法：
  *   - 换 Tushare token  → 改 TUSHARE_TOKEN
  *   - 换 DeepSeek key   → 改 DEEPSEEK_API_KEY
  *   - 换代理地址       → 改 TUSHARE_URL
  *
- * Tushare token 更新方法（3 步）：
- *   1. 改本文件 TUSHARE_TOKEN 默认值
- *   2. 同步改 .env.example
- *   3. 云端执行：
- *      echo 'TUSHARE_TOKEN=新token' > /home/stock/.env
- *      echo 'TUSHARE_URL=http://lianghua.nanyangqiankun.top' >> /home/stock/.env
- *      pm2 restart stock
+ * Tushare token 更新方法：只修改服务器上的 .env，不修改代码。
+ * 具体命令见 DEPLOY.md。
  */
 
-export const TUSHARE_URL = process.env.TUSHARE_URL || 'http://lianghua.nanyangqiankun.top'
-export const TUSHARE_TOKEN = process.env.TUSHARE_TOKEN || '158637460d4519a4f1a8d8b49ed991feabfdcd3b55a1cc41631c54ea19ce'
+export const TUSHARE_URL = process.env.TUSHARE_URL || ''
+export const TUSHARE_TOKEN = process.env.TUSHARE_TOKEN || ''
 
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '你的DeepSeek_API_Key'
 export const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions'

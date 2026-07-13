@@ -1,12 +1,15 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+const devPort = Number(process.env.NUXT_DEV_PORT || process.env.PORT || 3000)
+const devHost = process.env.NUXT_DEV_HOST || process.env.HOST || '127.0.0.1'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
   devtools: { enabled: false },
   modules: ['@pinia/nuxt'],
   ssr: false,
   devServer: {
-    port: 80,
-    host: '0.0.0.0',
+    port: Number.isFinite(devPort) ? devPort : 3000,
+    host: devHost,
   },
   runtimeConfig: {
     tushareToken: '',

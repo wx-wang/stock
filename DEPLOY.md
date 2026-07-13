@@ -15,15 +15,31 @@ cd ~/stock-dashboard && git push
 ### 服务器（拉取 + 重启）
 
 ```bash
-cd /home/stock && git pull origin main && pm2 restart stock
+cd /home/stock
+git pull origin main
+npm ci
+npm run build
+pm2 restart stock
 ```
 
 ### 首次部署（服务器进程不存在时）
 
 ```bash
 cd /home/stock
-pm2 start "npx nuxt dev" --name stock
+npm ci
+npm run build
+pm2 start .output/server/index.mjs --name stock
 pm2 save
+```
+
+### 每月更新 Tushare Token
+
+真实密钥只保存在服务器 `/home/stock/.env`，不要提交到 Git。
+
+```bash
+cd /home/stock
+sed -i 's/^TUSHARE_TOKEN=.*/TUSHARE_TOKEN=新的token/' .env
+pm2 restart stock
 ```
 
 ---
@@ -36,7 +52,7 @@ pm2 save
 | 项目路径 | `/home/stock` |
 | 域名 | `http://wx-wang.top` |
 | 进程管理 | pm2 (`pm2 status` / `pm2 logs stock`) |
-| 端口 | nuxt.config.ts 写死 80，nginx 反代到 Nuxt |
+| 端口 | 由环境变量 `PORT` 控制，建议 Node 跑 `127.0.0.1:3000`，nginx 反代 |
 | 数据缓存 | `/home/stock/persist/` |
 
 ---
