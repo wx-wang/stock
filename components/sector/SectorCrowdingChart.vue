@@ -48,10 +48,10 @@ const validSectors = computed(() =>
 )
 
 function quadrantColor(pct: number, chg: number): string {
-  if (pct >= 50 && chg >= 0) return '#E15241'     // 拥挤+加剧 → 红
+  if (pct >= 50 && chg >= 0) return '#C94B3D'     // 拥挤+加剧 → 红
   if (pct >= 50 && chg < 0) return '#F0A030'       // 拥挤+消退 → 橙
-  if (pct < 50 && chg >= 0) return '#3370FF'        // 冷清+涌入 → 蓝
-  return '#22AB94'                                  // 冷清+低位 → 绿
+  if (pct < 50 && chg >= 0) return '#456B8F'        // 冷清+涌入 → 蓝
+  return '#2D8B6F'                                  // 冷清+低位 → 绿
 }
 
 function quadrantLabel(pct: number, chg: number): string {
@@ -93,8 +93,8 @@ function buildChart() {
     tooltip: {
       trigger: 'item',
       backgroundColor: 'rgba(26,29,39,0.95)',
-      borderColor: '#2A2E39',
-      textStyle: { color: '#E4E7ED', fontSize: 12 },
+      borderColor: '#D8CDBB',
+      textStyle: { color: '#2B241C', fontSize: 12 },
       formatter: (params: any) => sectorTooltip(params.data.tooltipData),
     },
     grid: { left: 50, right: 30, top: 20, bottom: 40 },
@@ -104,7 +104,7 @@ function buildChart() {
       nameGap: 28,
       nameTextStyle: { color: '#909399', fontSize: 11 },
       type: 'value', min: 0, max: 100,
-      axisLine: { lineStyle: { color: '#2A2E39' } },
+      axisLine: { lineStyle: { color: '#D8CDBB' } },
       axisTick: { show: false },
       splitLine: { lineStyle: { color: 'rgba(42,46,57,0.4)', type: 'dashed' } },
       axisLabel: { color: '#909399', fontSize: 10, formatter: '{value}' },
@@ -115,7 +115,7 @@ function buildChart() {
       nameGap: 35,
       nameTextStyle: { color: '#909399', fontSize: 11 },
       type: 'value',
-      axisLine: { lineStyle: { color: '#2A2E39' } },
+      axisLine: { lineStyle: { color: '#D8CDBB' } },
       axisTick: { show: false },
       splitLine: { lineStyle: { color: 'rgba(42,46,57,0.4)', type: 'dashed' } },
       axisLabel: { color: '#909399', fontSize: 10, formatter: '{value}%' },
@@ -127,7 +127,7 @@ function buildChart() {
       emphasis: {
         focus: 'series',
         scale: 1.3,
-        label: { show: true, formatter: '{b}', position: 'top', color: '#E4E7ED', fontSize: 12 },
+        label: { show: true, formatter: '{b}', position: 'top', color: '#2B241C', fontSize: 12 },
       },
       markLine: {
         silent: true,
@@ -198,10 +198,10 @@ onBeforeUnmount(() => { chart?.dispose(); chart = null })
   height: 10px;
   border-radius: 50%;
 }
-.dot-red { background: #E15241; }
+.dot-red { background: #C94B3D; }
 .dot-orange { background: #F0A030; }
-.dot-blue { background: #3370FF; }
-.dot-green { background: #22AB94; }
+.dot-blue { background: #456B8F; }
+.dot-green { background: #2D8B6F; }
 
 @media (max-width: 768px) {
   .chart-container { height: 320px; }

@@ -16,14 +16,14 @@
         <div class="mkt-gauge">
           <svg viewBox="0 0 60 200" class="gauge-svg">
             <!-- 背景条 -->
-            <rect x="22" y="20" width="16" height="160" rx="8" fill="rgba(255,255,255,0.06)" />
+            <rect x="22" y="20" width="16" height="160" rx="8" fill="rgba(216,205,187,0.55)" />
 
             <!-- 色段 -->
-            <rect x="22" y="20" width="16" height="24" rx="8" fill="#E15241" opacity="0.8" />   <!-- 50+ -->
+            <rect x="22" y="20" width="16" height="24" rx="8" fill="#C94B3D" opacity="0.8" />   <!-- 50+ -->
             <rect x="22" y="44" width="16" height="16" rx="0" fill="#F0A030" opacity="0.8" />    <!-- 40-50 -->
             <rect x="22" y="60" width="16" height="16" rx="0" fill="#F5C842" opacity="0.8" />    <!-- 30-40 -->
-            <rect x="22" y="76" width="16" height="36" rx="0" fill="#22AB94" opacity="0.8" />    <!-- 20-30 -->
-            <rect x="22" y="112" width="16" height="36" rx="0" fill="#3370FF" opacity="0.8" />   <!-- <20 -->
+            <rect x="22" y="76" width="16" height="36" rx="0" fill="#2D8B6F" opacity="0.8" />    <!-- 20-30 -->
+            <rect x="22" y="112" width="16" height="36" rx="0" fill="#456B8F" opacity="0.8" />   <!-- <20 -->
 
             <!-- 当前水位 -->
             <rect x="20" y="12" width="20" height="6" rx="3"
@@ -31,10 +31,10 @@
               :y="gaugeY" />
           </svg>
           <div class="gauge-labels">
-            <span style="color:#E15241;">50%</span>
+            <span style="color:#C94B3D;">50%</span>
             <span style="color:#F0A030;">40%</span>
             <span style="color:#F5C842;">30%</span>
-            <span style="color:#22AB94;">20%</span>
+            <span style="color:#2D8B6F;">20%</span>
           </div>
         </div>
 
@@ -58,11 +58,11 @@
 
       <!-- 说明 -->
       <div class="mkt-note">
-        <span :style="{color:'#E15241'}">≥50% 极度拥挤</span>
+        <span :style="{color:'#C94B3D'}">≥50% 极度拥挤</span>
         <span :style="{color:'#F0A030'}">≥40% 拥挤</span>
         <span :style="{color:'#F5C842'}">≥30% 偏热</span>
-        <span :style="{color:'#22AB94'}">20-30% 正常</span>
-        <span :style="{color:'#3370FF'}">&lt;20% 冷清</span>
+        <span :style="{color:'#2D8B6F'}">20-30% 正常</span>
+        <span :style="{color:'#456B8F'}">&lt;20% 冷清</span>
       </div>
     </template>
   </div>
@@ -116,8 +116,8 @@ function buildChart() {
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(26,29,39,0.95)',
-      borderColor: '#2A2E39',
-      textStyle: { color: '#E4E7ED', fontSize: 12 },
+      borderColor: '#D8CDBB',
+      textStyle: { color: '#2B241C', fontSize: 12 },
       formatter: (params: any) => {
         const p = params[0]
         const r = p.value as number
@@ -128,12 +128,12 @@ function buildChart() {
     grid: { left: 45, right: 20, top: 10, bottom: 25 },
     xAxis: {
       type: 'category', data: dates,
-      axisLine: { lineStyle: { color: '#2A2E39' } },
+      axisLine: { lineStyle: { color: '#D8CDBB' } },
       axisLabel: { color: '#909399', fontSize: 10, rotate: 30 },
     },
     yAxis: {
       type: 'value', min: 0, max: 60,
-      axisLine: { lineStyle: { color: '#2A2E39' } },
+      axisLine: { lineStyle: { color: '#D8CDBB' } },
       axisLabel: { color: '#909399', fontSize: 10, formatter: '{value}%' },
       splitLine: { lineStyle: { color: 'rgba(42,46,57,0.3)', type: 'dashed' } },
     },
@@ -141,15 +141,15 @@ function buildChart() {
       type: 'line',
       data: ratios,
       smooth: true,
-      lineStyle: { color: '#3370FF', width: 2 },
+      lineStyle: { color: '#456B8F', width: 2 },
       itemStyle: {
         color: (params: any) => {
           const v = params.value as number
-          if (v >= 50) return '#E15241'
+          if (v >= 50) return '#C94B3D'
           if (v >= 40) return '#F0A030'
           if (v >= 30) return '#F5C842'
-          if (v < 20) return '#3370FF'
-          return '#22AB94'
+          if (v < 20) return '#456B8F'
+          return '#2D8B6F'
         },
       },
       areaStyle: {
@@ -163,7 +163,7 @@ function buildChart() {
         symbol: 'none',
         lineStyle: { type: 'dashed' },
         data: [
-          { yAxis: 50, lineStyle: { color: 'rgba(225,82,65,0.4)' }, label: { formatter: '极度拥挤', color: '#E15241', fontSize: 10 } },
+          { yAxis: 50, lineStyle: { color: 'rgba(225,82,65,0.4)' }, label: { formatter: '极度拥挤', color: '#C94B3D', fontSize: 10 } },
           { yAxis: 40, lineStyle: { color: 'rgba(240,160,48,0.4)' }, label: { formatter: '拥挤', color: '#F0A030', fontSize: 10 } },
           { yAxis: 30, lineStyle: { color: 'rgba(245,200,66,0.4)' }, label: { formatter: '偏热', color: '#F5C842', fontSize: 10 } },
         ],

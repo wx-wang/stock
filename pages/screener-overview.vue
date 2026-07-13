@@ -2,61 +2,61 @@
   <div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <h2 style="font-size:18px;font-weight:700;margin:0;color:#E4E7ED;">📊 股票一览表</h2>
-        <span v-if="totalStocks" style="font-size:12px;color:#8B8FA3;background:#1A1D27;padding:2px 8px;border-radius:4px;">{{ totalStocks }} 只 · {{ groups.length }} 行业</span>
-        <span v-if="marketPE" style="font-size:12px;color:#fff;background:#3370FF;padding:2px 8px;border-radius:4px;">全A PE{{ marketPE }} | r={{ discountRate }}%</span>
+        <h2 style="font-size:18px;font-weight:700;margin:0;color:var(--text-primary);">📊 股票一览表</h2>
+        <span v-if="totalStocks" style="font-size:12px;color:var(--text-muted);background:var(--bg-card);padding:2px 8px;border-radius:4px;">{{ totalStocks }} 只 · {{ groups.length }} 行业</span>
+        <span v-if="marketPE" style="font-size:12px;color:var(--bg-card);background:var(--color-accent);padding:2px 8px;border-radius:4px;">全A PE{{ marketPE }} | r={{ discountRate }}%</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <input v-model="searchText" class="search-input" style="background:#1E2130;border:1px solid #2A2E39;border-radius:6px;color:#E4E7ED;padding:0 10px;height:32px;width:200px;" placeholder="🔍 搜索代码或名称..." />
-        <button :disabled="loading" @click="refreshAll()" style="background:#3370FF;color:#fff;border:none;border-radius:6px;padding:0 12px;height:32px;font-size:12px;cursor:pointer;">
+        <input v-model="searchText" class="search-input" style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:6px;color:var(--text-primary);padding:0 10px;height:32px;width:200px;" placeholder="🔍 搜索代码或名称..." />
+        <button :disabled="loading" @click="refreshAll()" style="background:var(--color-accent);color:var(--bg-card);border:none;border-radius:6px;padding:0 12px;height:32px;font-size:12px;cursor:pointer;">
           {{ loading ? '⏳ 更新中...' : '🔄 更新数据' }}
         </button>
       </div>
     </div>
 
-    <div v-if="error" style="padding:12px;background:rgba(225,82,65,0.08);border:1px solid rgba(225,82,65,0.2);border-radius:6px;margin-bottom:12px;color:#E15241;">{{ error }}</div>
+    <div v-if="error" style="padding:12px;background:rgba(225,82,65,0.08);border:1px solid rgba(225,82,65,0.2);border-radius:6px;margin-bottom:12px;color:var(--color-up);">{{ error }}</div>
 
-    <div class="filter-bar" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 12px;background:#1A1D27;border:1px solid #2A2E39;border-radius:6px;">
-      <span style="font-size:13px;color:#8B8FA3;cursor:pointer;user-select:none;" @click="showFilters=!showFilters">🔽 高级筛选</span>
+    <div class="filter-bar" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 12px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;">
+      <span style="font-size:13px;color:var(--text-muted);cursor:pointer;user-select:none;" @click="showFilters=!showFilters">🔽 高级筛选</span>
       <template v-if="showFilters">
-        <span style="font-size:12px;color:#8B8FA3;">PEG</span>
-        <input v-model="filterPegMin" type="number" step="0.1" placeholder="Min" style="width:70px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="color:#8B8FA3;">—</span>
-        <input v-model="filterPegMax" type="number" step="0.1" placeholder="Max" style="width:70px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="font-size:12px;color:#8B8FA3;">估值空间%</span>
-        <input v-model="filterUpsideMin" type="number" placeholder="Min" style="width:70px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="color:#8B8FA3;">—</span>
-        <input v-model="filterUpsideMax" type="number" placeholder="Max" style="width:70px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="font-size:12px;color:#8B8FA3;">目标空间%</span>
-        <input v-model="filterTargetMin" type="number" placeholder="Min" style="width:70px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="color:#8B8FA3;">—</span>
-        <input v-model="filterTargetMax" type="number" placeholder="Max" style="width:70px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="font-size:12px;color:#8B8FA3;">🏅金股≥</span>
-        <input v-model="filterGoldenMin" type="number" placeholder="次" style="width:50px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="font-size:12px;color:#8B8FA3;">天花板</span>
-        <input v-model="filterCeilingMin" type="number" step="0.1" placeholder="Min" style="width:60px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="color:#8B8FA3;">—</span>
-        <input v-model="filterCeilingMax" type="number" step="0.1" placeholder="Max" style="width:60px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="font-size:12px;color:#8B8FA3;">PE空间%</span>
-        <input v-model="filterPeSpaceMin" type="number" placeholder="Min" style="width:60px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
-        <span style="color:#8B8FA3;">—</span>
-        <input v-model="filterPeSpaceMax" type="number" placeholder="Max" style="width:60px;height:28px;background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;text-align:center;border-radius:4px;" />
+        <span style="font-size:12px;color:var(--text-muted);">PEG</span>
+        <input v-model="filterPegMin" type="number" step="0.1" placeholder="Min" style="width:70px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="color:var(--text-muted);">—</span>
+        <input v-model="filterPegMax" type="number" step="0.1" placeholder="Max" style="width:70px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="font-size:12px;color:var(--text-muted);">估值空间%</span>
+        <input v-model="filterUpsideMin" type="number" placeholder="Min" style="width:70px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="color:var(--text-muted);">—</span>
+        <input v-model="filterUpsideMax" type="number" placeholder="Max" style="width:70px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="font-size:12px;color:var(--text-muted);">目标空间%</span>
+        <input v-model="filterTargetMin" type="number" placeholder="Min" style="width:70px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="color:var(--text-muted);">—</span>
+        <input v-model="filterTargetMax" type="number" placeholder="Max" style="width:70px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="font-size:12px;color:var(--text-muted);">🏅金股≥</span>
+        <input v-model="filterGoldenMin" type="number" placeholder="次" style="width:50px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="font-size:12px;color:var(--text-muted);">天花板</span>
+        <input v-model="filterCeilingMin" type="number" step="0.1" placeholder="Min" style="width:60px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="color:var(--text-muted);">—</span>
+        <input v-model="filterCeilingMax" type="number" step="0.1" placeholder="Max" style="width:60px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="font-size:12px;color:var(--text-muted);">PE空间%</span>
+        <input v-model="filterPeSpaceMin" type="number" placeholder="Min" style="width:60px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
+        <span style="color:var(--text-muted);">—</span>
+        <input v-model="filterPeSpaceMax" type="number" placeholder="Max" style="width:60px;height:28px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);text-align:center;border-radius:4px;" />
       </template>
     </div>
 
-    <div v-for="g in collapsedGroups" :key="g.industryName" style="background:#1A1D27;border:1px solid #2A2E39;border-radius:6px;margin-bottom:10px;overflow:hidden;">
-      <div @click="toggleGroup(g.industryName)" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;color:#E4E7ED;">
+    <div v-for="g in collapsedGroups" :key="g.industryName" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;margin-bottom:10px;overflow:hidden;">
+      <div @click="toggleGroup(g.industryName)" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--text-primary);">
         <span style="font-size:10px;">{{ expandedGroups.has(g.industryName) ? '▼' : '▶' }}</span>
         <span style="font-size:15px;font-weight:700;">{{ g.industryName }}</span>
-        <span style="font-size:12px;color:#8B8FA3;">{{ g.displayStocks?.length || 0 }}/{{ g.count }}只</span>
-        <span v-if="g.avgPe>0" style="font-size:12px;color:#8B8FA3;">均PE {{ g.avgPe }}</span>
-        <span v-if="g.avgGrowth!==0" style="font-size:12px;" :style="{color:(g.avgGrowth>0?'#E15241':'#22AB94')}">均26E {{ g.avgGrowth>0?'+':'' }}{{ g.avgGrowth }}%</span>
-        <span v-if="g.avgPeg>0" style="font-size:12px;color:#3370FF;font-weight:700;">PEG {{ g.avgPeg }}</span>
+        <span style="font-size:12px;color:var(--text-muted);">{{ g.displayStocks?.length || 0 }}/{{ g.count }}只</span>
+        <span v-if="g.avgPe>0" style="font-size:12px;color:var(--text-muted);">均PE {{ g.avgPe }}</span>
+        <span v-if="g.avgGrowth!==0" style="font-size:12px;" :style="{color:(g.avgGrowth>0?'var(--color-up)':'var(--color-down)')}">均26E {{ g.avgGrowth>0?'+':'' }}{{ g.avgGrowth }}%</span>
+        <span v-if="g.avgPeg>0" style="font-size:12px;color:var(--color-accent);font-weight:700;">PEG {{ g.avgPeg }}</span>
       </div>
       <div v-if="expandedGroups.has(g.industryName)" style="padding:0 10px 8px;overflow-x:auto;">
         <table style="width:100%;font-size:12px;border-collapse:collapse;">
           <thead>
-            <tr style="font-size:10px;color:#8B8FA3;position:sticky;top:0;background:#1A1D27;">
+            <tr style="font-size:10px;color:var(--text-muted);position:sticky;top:0;background:var(--bg-card);">
               <th style="padding:5px 8px;width:32px;">⭐</th>
               <th style="padding:5px 8px;text-align:left;">代码</th><th style="padding:5px 8px;text-align:left;">名称</th>
               <th style="padding:5px 8px;text-align:right;cursor:pointer;user-select:none;" @click="toggleSort('close')">股价{{sortIcon('close')}}</th>
@@ -78,28 +78,28 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="s in g.displayStocks" :key="s.code" style="color:#E4E7ED;">
+            <tr v-for="s in g.displayStocks" :key="s.code" style="color:var(--text-primary);">
               <td style="padding:5px 8px;text-align:center;cursor:pointer;font-size:16px;" :title="watchlistCodes.has(s.code)?'取消自选':'加入自选'" @click="toggleWatchlist(s.code,s.name)">{{ watchlistCodes.has(s.code) ? '★' : '☆' }}</td>
               <td style="padding:5px 8px;font-family:monospace;font-size:12px;">{{ s.code }}</td>
               <td style="padding:5px 8px;font-weight:600;">{{ s.name }}</td>
               <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ s.close>0?s.close.toFixed(2):'--' }}</td>
               <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ s.peTtm>0?s.peTtm.toFixed(1):'--' }}</td>
               <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ (s.staticPe||0)>0?(s.staticPe||0).toFixed(1):'--' }}</td>
-              <td style="padding:5px 8px;text-align:center;font-family:monospace;cursor:pointer;color:#3370FF;text-decoration:underline;" @click.stop="openCeiling(s)">{{ getCeiling(s)>0?getCeiling(s).toFixed(2)+'x':'--' }}</td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;"><div>{{ getEstPe(s)>0?getEstPe(s).toFixed(1):'--' }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:(getEstPe(s)>0&&(s.peTtm||0)>0&&getEstPe(s)/(s.peTtm||1)<1)?'#22AB94':'#E15241'}">{{ (getEstPe(s)>0&&(s.peTtm||0)>0)?((getEstPe(s)/(s.peTtm||0)-1)*100).toFixed(0)+'%':'--' }}</div></td>
+              <td style="padding:5px 8px;text-align:center;font-family:monospace;cursor:pointer;color:var(--color-accent);text-decoration:underline;" @click.stop="openCeiling(s)">{{ getCeiling(s)>0?getCeiling(s).toFixed(2)+'x':'--' }}</td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;"><div>{{ getEstPe(s)>0?getEstPe(s).toFixed(1):'--' }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:(getEstPe(s)>0&&(s.peTtm||0)>0&&getEstPe(s)/(s.peTtm||1)<1)?'var(--color-down)':'var(--color-up)'}">{{ (getEstPe(s)>0&&(s.peTtm||0)>0)?((getEstPe(s)/(s.peTtm||0)-1)*100).toFixed(0)+'%':'--' }}</div></td>
               <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getCeilingEps(s)>0?getCeilingEps(s).toFixed(2):'--' }}</td>
-              <td style="padding:5px 8px;text-align:right;font-family:monospace;cursor:pointer;color:#22AB94;" @click.stop="openTerminal(s)">{{ getTermEps(s)>0?getTermEps(s).toFixed(2):'--' }}</td>
+              <td style="padding:5px 8px;text-align:right;font-family:monospace;cursor:pointer;color:var(--color-down);" @click.stop="openTerminal(s)">{{ getTermEps(s)>0?getTermEps(s).toFixed(2):'--' }}</td>
               <td style="padding:5px 8px;text-align:right;font-family:monospace;">{{ getTermPe(s)>0?getTermPe(s).toFixed(1):'--' }}</td>
               <td class="hide-mobile" style="padding:5px 8px;text-align:center;font-family:monospace;">{{ s.peg>0?s.peg.toFixed(2):'--' }}</td>
               <td class="hide-mobile" style="padding:5px 8px;text-align:right;font-family:monospace;">{{ s.totalMv>0?s.totalMv.toFixed(1):'--' }}</td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><span :style="{color:s.reports>=30?'#22AB94':s.reports>=15?'#3370FF':'#8B8FA3'}">{{ s.reports }}</span></td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy2Eps"><div style="font-family:monospace;">{{ s.fy2Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy2Growth>0?'#E15241':'#22AB94'}">{{ (s.fy2Growth>0?'+':'')+s.fy2Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy3Eps"><div style="font-family:monospace;">{{ s.fy3Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy3Growth>0?'#E15241':'#22AB94'}">{{ (s.fy3Growth>0?'+':'')+s.fy3Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy4Eps"><div style="font-family:monospace;">{{ s.fy4Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy4Growth>0?'#E15241':'#22AB94'}">{{ (s.fy4Growth>0?'+':'')+s.fy4Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><span v-if="s.buyRating" style="color:#E15241;font-weight:600;">{{ s.buyRating }}B</span><span v-if="s.addRating" style="color:#8B8FA3;"> / {{ s.addRating }}A</span><span v-if="!s.buyRating&&!s.addRating" style="color:#8B8FA3;">--</span></td>
-              <td style="padding:5px 8px;text-align:center;"><span v-if="s.isGoldenRecent">⭐</span><span v-if="s.goldenCount12m>0" :style="{color:s.isGoldenRecent?'#22AB94':'#8B8FA3'}">{{ s.goldenCount12m }}/12</span><span v-if="s.goldenCount12m===0" style="color:#8B8FA3;">--</span></td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.targetPrice>0"><div style="font-family:monospace;">{{ s.targetPrice.toFixed(0) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.targetUpside>0?'#E15241':'#22AB94'}">{{ (s.targetUpside>0?'+':'')+s.targetUpside.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
-              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.dcfValue>0"><div style="font-family:monospace;">{{ s.dcfValue.toFixed(1) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.dcfUpside>0?'#E15241':'#22AB94'}">{{ (s.dcfUpside>0?'+':'')+s.dcfUpside.toFixed(1)+'%' }}</div></template><span v-else style="color:#8B8FA3;">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><span :style="{color:s.reports>=30?'var(--color-down)':s.reports>=15?'var(--color-accent)':'var(--text-muted)'}">{{ s.reports }}</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy2Eps"><div style="font-family:monospace;">{{ s.fy2Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy2Growth>0?'var(--color-up)':'var(--color-down)'}">{{ (s.fy2Growth>0?'+':'')+s.fy2Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:var(--text-muted);">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy3Eps"><div style="font-family:monospace;">{{ s.fy3Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy3Growth>0?'var(--color-up)':'var(--color-down)'}">{{ (s.fy3Growth>0?'+':'')+s.fy3Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:var(--text-muted);">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.fy4Eps"><div style="font-family:monospace;">{{ s.fy4Eps.toFixed(2) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.fy4Growth>0?'var(--color-up)':'var(--color-down)'}">{{ (s.fy4Growth>0?'+':'')+s.fy4Growth.toFixed(1)+'%' }}</div></template><span v-else style="color:var(--text-muted);">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><span v-if="s.buyRating" style="color:var(--color-up);font-weight:600;">{{ s.buyRating }}B</span><span v-if="s.addRating" style="color:var(--text-muted);"> / {{ s.addRating }}A</span><span v-if="!s.buyRating&&!s.addRating" style="color:var(--text-muted);">--</span></td>
+              <td style="padding:5px 8px;text-align:center;"><span v-if="s.isGoldenRecent">⭐</span><span v-if="s.goldenCount12m>0" :style="{color:s.isGoldenRecent?'var(--color-down)':'var(--text-muted)'}">{{ s.goldenCount12m }}/12</span><span v-if="s.goldenCount12m===0" style="color:var(--text-muted);">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.targetPrice>0"><div style="font-family:monospace;">{{ s.targetPrice.toFixed(0) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.targetUpside>0?'var(--color-up)':'var(--color-down)'}">{{ (s.targetUpside>0?'+':'')+s.targetUpside.toFixed(1)+'%' }}</div></template><span v-else style="color:var(--text-muted);">--</span></td>
+              <td class="hide-mobile" style="padding:5px 8px;text-align:center;"><template v-if="s.dcfValue>0"><div style="font-family:monospace;">{{ s.dcfValue.toFixed(1) }}</div><div style="font-size:10px;font-family:monospace;" :style="{color:s.dcfUpside>0?'var(--color-up)':'var(--color-down)'}">{{ (s.dcfUpside>0?'+':'')+s.dcfUpside.toFixed(1)+'%' }}</div></template><span v-else style="color:var(--text-muted);">--</span></td>
             </tr>
           </tbody>
         </table>
@@ -107,25 +107,25 @@
     </div>
 
     <!-- 天花板弹窗 -->
-    <div v-if="ceilingStock" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;" @click="ceilingStock=null">
-      <div @click.stop class="mobile-modal" style="background:#1A1D27;border:1px solid #2A2E39;border-radius:8px;padding:20px 24px;max-width:420px;width:90%;">
+    <div v-if="ceilingStock" style="position:fixed;inset:0;background:rgba(43,36,28,0.42);z-index:1000;display:flex;align-items:center;justify-content:center;" @click="ceilingStock=null">
+      <div @click.stop class="mobile-modal" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:20px 24px;max-width:420px;width:90%;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <span style="font-size:16px;font-weight:700;color:#E4E7ED;">{{ ceilingStock.name }} ({{ ceilingStock.code }})</span>
-          <span style="cursor:pointer;color:#8B8FA3;font-size:20px;" @click="ceilingStock=null">✕</span>
+          <span style="font-size:16px;font-weight:700;color:var(--text-primary);">{{ ceilingStock.name }} ({{ ceilingStock.code }})</span>
+          <span style="cursor:pointer;color:var(--text-muted);font-size:20px;" @click="ceilingStock=null">✕</span>
         </div>
-        <div style="font-size:13px;color:#8B8FA3;margin-bottom:12px;">
-          静态PE: <b style="color:#E4E7ED;">{{ (ceilingStock.staticPe||0).toFixed(1) }}</b> 
-          &nbsp; PE_TTM: <b style="color:#E4E7ED;">{{ (ceilingStock.peTtm||0).toFixed(1) }}</b>
-          &nbsp; 股价: <b style="color:#E4E7ED;">{{ (ceilingStock.close||0).toFixed(2) }}</b>
-          <div style="margin-top:4px;">上年度EPS(估): <b style="color:#E4E7ED;">{{ (ceilingStock.staticPe||0)>0&&(ceilingStock.close||0)>0 ? ((ceilingStock.close||0)/(ceilingStock.staticPe||1)).toFixed(2) : '--' }}</b></div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
+          静态PE: <b style="color:var(--text-primary);">{{ (ceilingStock.staticPe||0).toFixed(1) }}</b>
+          &nbsp; PE_TTM: <b style="color:var(--text-primary);">{{ (ceilingStock.peTtm||0).toFixed(1) }}</b>
+          &nbsp; 股价: <b style="color:var(--text-primary);">{{ (ceilingStock.close||0).toFixed(2) }}</b>
+          <div style="margin-top:4px;">上年度EPS(估): <b style="color:var(--text-primary);">{{ (ceilingStock.staticPe||0)>0&&(ceilingStock.close||0)>0 ? ((ceilingStock.close||0)/(ceilingStock.staticPe||1)).toFixed(2) : '--' }}</b></div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:rgba(51,112,255,0.06);border:1px solid rgba(51,112,255,0.15);border-radius:6px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:#8B8FA3;">折现率:</span>
-          <select v-model="ceilingCustomRate" style="background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;border-radius:4px;padding:2px 6px;font-size:12px;height:26px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:rgba(69,107,143,0.08);border:1px solid rgba(69,107,143,0.18);border-radius:6px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-muted);">折现率:</span>
+          <select v-model="ceilingCustomRate" style="background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);border-radius:4px;padding:2px 6px;font-size:12px;height:26px;">
             <option v-for="r in ceilingRates" :key="r" :value="r">{{ (r*100).toFixed(0) }}%</option>
           </select>
-          <span style="font-size:12px;color:#8B8FA3;">到达年数:</span>
-          <select v-model="terminalYears" style="background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;border-radius:4px;padding:2px 6px;font-size:12px;height:26px;">
+          <span style="font-size:12px;color:var(--text-muted);">到达年数:</span>
+          <select v-model="terminalYears" style="background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);border-radius:4px;padding:2px 6px;font-size:12px;height:26px;">
             <option :value="3">3年</option>
             <option :value="5">5年</option>
             <option :value="7">7年</option>
@@ -134,22 +134,22 @@
             <option :value="15">15年</option>
             <option :value="20">20年</option>
           </select>
-          <span style="font-size:12px;font-family:monospace;color:#3370FF;margin-left:auto;">
+          <span style="font-size:12px;font-family:monospace;color:var(--color-accent);margin-left:auto;">
             天花板 {{ liveCeiling }} &nbsp; EPS {{ liveCeilingEps }} &nbsp; 预估PE {{ liveEstPe }}
           </span>
-          <button @click="applyCustomRate" style="background:#3370FF;color:#fff;border:none;border-radius:4px;padding:2px 10px;font-size:12px;height:26px;cursor:pointer;">应用</button>
-          <button @click="resetCustomRate" style="background:transparent;color:#8B8FA3;border:1px solid #2A2E39;border-radius:4px;padding:2px 10px;font-size:12px;height:26px;cursor:pointer;">重置</button>
+          <button @click="applyCustomRate" style="background:var(--color-accent);color:var(--bg-card);border:none;border-radius:4px;padding:2px 10px;font-size:12px;height:26px;cursor:pointer;">应用</button>
+          <button @click="resetCustomRate" style="background:transparent;color:var(--text-muted);border:1px solid var(--border-color);border-radius:4px;padding:2px 10px;font-size:12px;height:26px;cursor:pointer;">重置</button>
         </div>
         <table style="width:100%;font-size:13px;border-collapse:collapse;">
-          <thead><tr style="color:#8B8FA3;text-align:center;">
-            <th style="padding:6px 12px;border-bottom:1px solid #2A2E39;">折现率</th>
-            <th style="padding:6px 12px;border-bottom:1px solid #2A2E39;">天花板 (x倍)</th>
-            <th style="padding:6px 12px;border-bottom:1px solid #2A2E39;">隐含增速</th>
+          <thead><tr style="color:var(--text-muted);text-align:center;">
+            <th style="padding:6px 12px;border-bottom:1px solid var(--border-color);">折现率</th>
+            <th style="padding:6px 12px;border-bottom:1px solid var(--border-color);">天花板 (x倍)</th>
+            <th style="padding:6px 12px;border-bottom:1px solid var(--border-color);">隐含增速</th>
           </tr></thead>
           <tbody>
-            <tr v-for="r in ceilingRates" :key="r" style="text-align:center;color:#E4E7ED;" :style="{background:r===0.10?'rgba(51,112,255,0.08)':'transparent'}">
+            <tr v-for="r in ceilingRates" :key="r" style="text-align:center;color:var(--text-primary);" :style="{background:r===0.10?'rgba(69,107,143,0.08)':'transparent'}">
               <td style="padding:6px 12px;">{{ (r*100).toFixed(0) }}%</td>
-              <td style="padding:6px 12px;font-family:monospace;" :style="{color:r===0.10?'#3370FF':'#E4E7ED'}">{{ computeCeilingForRate(ceilingStock.staticPe||0, r) }}</td>
+              <td style="padding:6px 12px;font-family:monospace;" :style="{color:r===0.10?'var(--color-accent)':'var(--text-primary)'}">{{ computeCeilingForRate(ceilingStock.staticPe||0, r) }}</td>
               <td style="padding:6px 12px;font-family:monospace;">{{ computeGrowthRateForRate(ceilingStock.staticPe||0, r) }}</td>
             </tr>
           </tbody>
@@ -157,24 +157,24 @@
       </div>
     </div>
     <!-- 终局EPS弹窗 -->
-    <div v-if="terminalStock" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;" @click="terminalStock=null">
-      <div @click.stop class="mobile-modal" style="background:#1A1D27;border:1px solid #2A2E39;border-radius:8px;padding:20px 24px;max-width:760px;width:95%;max-height:90vh;overflow-y:auto;">
+    <div v-if="terminalStock" style="position:fixed;inset:0;background:rgba(43,36,28,0.42);z-index:1000;display:flex;align-items:center;justify-content:center;" @click="terminalStock=null">
+      <div @click.stop class="mobile-modal" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:20px 24px;max-width:760px;width:95%;max-height:90vh;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <span style="font-size:16px;font-weight:700;color:#E4E7ED;">{{ terminalStock.name }} ({{ terminalStock.code }}) — 终局EPS</span>
-          <span style="cursor:pointer;color:#8B8FA3;font-size:20px;" @click="terminalStock=null">✕</span>
+          <span style="font-size:16px;font-weight:700;color:var(--text-primary);">{{ terminalStock.name }} ({{ terminalStock.code }}) — 终局EPS</span>
+          <span style="cursor:pointer;color:var(--text-muted);font-size:20px;" @click="terminalStock=null">✕</span>
         </div>
-        <div style="font-size:13px;color:#8B8FA3;margin-bottom:12px;">
-          股价: <b style="color:#E4E7ED;">{{ (terminalStock.close||0).toFixed(2) }}</b>
-          &nbsp; 静态PE: <b style="color:#E4E7ED;">{{ (terminalStock.staticPe||0)>0?(terminalStock.staticPe||0).toFixed(1):'亏损' }}</b>
-          &nbsp; PE_TTM: <b style="color:#E4E7ED;">{{ (terminalStock.peTtm||0)>0?(terminalStock.peTtm||0).toFixed(1):'--' }}</b>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
+          股价: <b style="color:var(--text-primary);">{{ (terminalStock.close||0).toFixed(2) }}</b>
+          &nbsp; 静态PE: <b style="color:var(--text-primary);">{{ (terminalStock.staticPe||0)>0?(terminalStock.staticPe||0).toFixed(1):'亏损' }}</b>
+          &nbsp; PE_TTM: <b style="color:var(--text-primary);">{{ (terminalStock.peTtm||0)>0?(terminalStock.peTtm||0).toFixed(1):'--' }}</b>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:rgba(34,171,148,0.06);border:1px solid rgba(34,171,148,0.15);border-radius:6px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:#8B8FA3;">折现率:</span>
-          <select v-model="terminalCustomRate" style="background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;border-radius:4px;padding:2px 6px;font-size:12px;height:26px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:rgba(45,139,111,0.08);border:1px solid rgba(45,139,111,0.18);border-radius:6px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-muted);">折现率:</span>
+          <select v-model="terminalCustomRate" style="background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);border-radius:4px;padding:2px 6px;font-size:12px;height:26px;">
             <option v-for="r in ceilingRates" :key="r" :value="r">{{ (r*100).toFixed(0) }}%</option>
           </select>
-          <span style="font-size:12px;color:#8B8FA3;">年数:</span>
-          <select v-model="terminalCustomYears" style="background:#1E2130;border:1px solid #2A2E39;color:#E4E7ED;border-radius:4px;padding:2px 6px;font-size:12px;height:26px;">
+          <span style="font-size:12px;color:var(--text-muted);">年数:</span>
+          <select v-model="terminalCustomYears" style="background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);border-radius:4px;padding:2px 6px;font-size:12px;height:26px;">
             <option :value="3">3年</option>
             <option :value="5">5年</option>
             <option :value="7">7年</option>
@@ -183,25 +183,25 @@
             <option :value="15">15年</option>
             <option :value="20">20年</option>
           </select>
-          <span style="font-size:12px;font-family:monospace;color:#22AB94;margin-left:auto;">
+          <span style="font-size:12px;font-family:monospace;color:var(--color-down);margin-left:auto;">
             终局EPS {{ liveTermEpsPreview }} &nbsp; 终局PE {{ liveTermPePreview }}
           </span>
-          <button @click="applyTerminalCustom" style="background:#22AB94;color:#fff;border:none;border-radius:4px;padding:2px 10px;font-size:12px;height:26px;cursor:pointer;">应用</button>
-          <button @click="resetTerminalCustom" style="background:transparent;color:#8B8FA3;border:1px solid #2A2E39;border-radius:4px;padding:2px 10px;font-size:12px;height:26px;cursor:pointer;">重置</button>
+          <button @click="applyTerminalCustom" style="background:var(--color-down);color:var(--bg-card);border:none;border-radius:4px;padding:2px 10px;font-size:12px;height:26px;cursor:pointer;">应用</button>
+          <button @click="resetTerminalCustom" style="background:transparent;color:var(--text-muted);border:1px solid var(--border-color);border-radius:4px;padding:2px 10px;font-size:12px;height:26px;cursor:pointer;">重置</button>
         </div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;">
           <thead>
-            <tr style="color:#8B8FA3;text-align:center;">
-              <th style="padding:6px 10px;border-bottom:1px solid #2A2E39;"></th>
-              <th v-for="r in ceilingRates" :key="r" style="padding:6px 10px;border-bottom:1px solid #2A2E39;" :style="{background:r===0.10?'rgba(34,171,148,0.06)':'transparent'}">r={{ (r*100).toFixed(0) }}%</th>
+            <tr style="color:var(--text-muted);text-align:center;">
+              <th style="padding:6px 10px;border-bottom:1px solid var(--border-color);"></th>
+              <th v-for="r in ceilingRates" :key="r" style="padding:6px 10px;border-bottom:1px solid var(--border-color);" :style="{background:r===0.10?'rgba(45,139,111,0.08)':'transparent'}">r={{ (r*100).toFixed(0) }}%</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="yr in terminalYearsAll" :key="yr" style="text-align:center;color:#E4E7ED;">
-              <td style="padding:6px 10px;font-weight:600;" :style="{background:yr===10?'rgba(34,171,148,0.06)':'transparent'}">{{ yr }}年</td>
-              <td v-for="r in ceilingRates" :key="r" style="padding:6px 10px;font-family:monospace;" :style="{background:r===0.10&&yr===10?'rgba(34,171,148,0.12)':'transparent'}">
-                <div style="color:#22AB94;">{{ fmtTermEps(terminalStock.close||0, r, yr) }}</div>
-                <div style="font-size:10px;color:#8B8FA3;">PE{{ fmtTermPe(terminalStock.close||0, r, yr) }}</div>
+            <tr v-for="yr in terminalYearsAll" :key="yr" style="text-align:center;color:var(--text-primary);">
+              <td style="padding:6px 10px;font-weight:600;" :style="{background:yr===10?'rgba(45,139,111,0.08)':'transparent'}">{{ yr }}年</td>
+              <td v-for="r in ceilingRates" :key="r" style="padding:6px 10px;font-family:monospace;" :style="{background:r===0.10&&yr===10?'rgba(45,139,111,0.12)':'transparent'}">
+                <div style="color:var(--color-down);">{{ fmtTermEps(terminalStock.close||0, r, yr) }}</div>
+                <div style="font-size:10px;color:var(--text-muted);">PE{{ fmtTermPe(terminalStock.close||0, r, yr) }}</div>
               </td>
             </tr>
           </tbody>

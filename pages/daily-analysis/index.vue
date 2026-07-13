@@ -80,7 +80,7 @@ const reports = computed(() => data.value?.reports || [])
 }
 
 .daily-kicker {
-  color: #fbbf24;
+  color: var(--color-warning);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -151,13 +151,13 @@ const reports = computed(() => data.value?.reports || [])
 
 .daily-row:hover {
   color: inherit;
-  border-color: rgba(251, 191, 36, 0.45);
+  border-color: var(--border-light);
   background: var(--bg-card-hover);
   transform: translateY(-1px);
 }
 
 .date-block {
-  border-left: 3px solid #fbbf24;
+  border-left: 3px solid var(--color-warning);
   padding-left: 10px;
 }
 
@@ -169,7 +169,7 @@ const reports = computed(() => data.value?.reports || [])
 }
 
 .date-block strong {
-  color: #fbbf24;
+  color: var(--color-warning);
   font-size: 13px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
@@ -189,9 +189,9 @@ const reports = computed(() => data.value?.reports || [])
 }
 
 .generated {
-  color: #fde68a;
-  background: rgba(251, 191, 36, 0.10);
-  border: 1px solid rgba(251, 191, 36, 0.22);
+  color: var(--color-warning);
+  background: rgba(184, 135, 45, 0.10);
+  border: 1px solid rgba(184, 135, 45, 0.22);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 11px;

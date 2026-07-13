@@ -34,16 +34,16 @@ function rankClass(i: number) { return i < 3 ? 'top3' : '' }
 .hot-section { margin-bottom: 24px; }
 .section-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
 .hot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.hot-col { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.hot-col { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; box-shadow: var(--shadow-card); }
 .col-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; }
-.hot-row { display: flex; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.hot-row { display: flex; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(216,205,187,0.5); }
 .hot-row:last-child { border-bottom: none; }
-.hot-rank { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; font-weight: 700; color: #6b7280; background: rgba(255,255,255,0.05); flex-shrink: 0; }
-.hot-rank.top3 { background: rgba(251,191,36,0.2); color: #fbbf24; }
+.hot-rank { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; font-weight: 700; color: var(--text-muted); background: rgba(184,135,45,0.10); flex-shrink: 0; }
+.hot-rank.top3 { background: rgba(184,135,45,0.18); color: var(--color-warning); }
 .hot-name { flex: 1; margin-left: 10px; font-size: 13px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hot-pct { font-size: 13px; font-weight: 600; flex-shrink: 0; }
-.hot-pct.up { color: #ef4444; }
-.hot-pct.down { color: #22c55e; }
+.hot-pct.up { color: var(--color-up); }
+.hot-pct.down { color: var(--color-down); }
 .empty { font-size: 12px; color: var(--text-secondary); padding: 20px 0; text-align: center; }
 
 @media (max-width: 600px) { .hot-grid { grid-template-columns: 1fr; } }

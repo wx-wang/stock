@@ -114,7 +114,7 @@ function renderChart() {
         name: 'Alpha(年化)',
         nameTextStyle: { color: '#22c55e', fontSize: 11 },
         axisLabel: { color: '#888', fontSize: 11, formatter: (v: number) => (v * 100).toFixed(0) + '%' },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+        splitLine: { lineStyle: { color: 'rgba(216,205,187,0.45)' } },
       },
       {
         type: 'value',
@@ -136,7 +136,7 @@ function renderChart() {
         itemStyle: { color: '#22c55e' },
         markLine: {
           silent: true,
-          data: [{ yAxis: 0, lineStyle: { color: 'rgba(255,255,255,0.15)', type: 'dashed' } }],
+          data: [{ yAxis: 0, lineStyle: { color: 'rgba(216,205,187,0.7)', type: 'dashed' } }],
         },
       },
       {
@@ -150,7 +150,7 @@ function renderChart() {
         itemStyle: { color: '#3370ff' },
         markLine: {
           silent: true,
-          data: [{ yAxis: 1, lineStyle: { color: 'rgba(255,255,255,0.15)', type: 'dashed' } }],
+          data: [{ yAxis: 1, lineStyle: { color: 'rgba(216,205,187,0.7)', type: 'dashed' } }],
         },
       },
     ],
@@ -223,8 +223,8 @@ onUnmounted(() => { chart?.dispose(); chart = null })
 }
 
 .popup-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(69, 107, 143, 0.12);
+  color: var(--color-accent);
 }
 
 .popup-loading,

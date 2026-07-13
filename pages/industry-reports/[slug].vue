@@ -71,6 +71,7 @@ const report = computed(() => data.value?.report || null)
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
 
 .report-shell.state {
@@ -83,7 +84,7 @@ const report = computed(() => data.value?.report || null)
   padding: 30px 34px 24px;
   border-bottom: 1px solid var(--border-color);
   background:
-    linear-gradient(135deg, rgba(51, 112, 255, 0.14), transparent 46%),
+    linear-gradient(135deg, rgba(184, 135, 45, 0.13), transparent 46%),
     var(--bg-card);
 }
 
@@ -91,15 +92,15 @@ const report = computed(() => data.value?.report || null)
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: #7dd3fc;
+  color: var(--color-accent);
   font-size: 12px;
   font-weight: 700;
   margin-bottom: 12px;
 }
 
 .report-meta-top span {
-  border: 1px solid rgba(125, 211, 252, 0.20);
-  background: rgba(125, 211, 252, 0.08);
+  border: 1px solid rgba(69, 107, 143, 0.20);
+  background: rgba(69, 107, 143, 0.08);
   border-radius: 999px;
   padding: 3px 9px;
 }
@@ -126,9 +127,9 @@ const report = computed(() => data.value?.report || null)
 }
 
 .report-tags span {
-  color: #a7f3d0;
-  background: rgba(16, 185, 129, 0.10);
-  border: 1px solid rgba(16, 185, 129, 0.20);
+  color: var(--color-down);
+  background: rgba(45, 139, 111, 0.10);
+  border: 1px solid rgba(45, 139, 111, 0.20);
   border-radius: 999px;
   padding: 3px 9px;
   font-size: 12px;
@@ -178,8 +179,8 @@ const report = computed(() => data.value?.report || null)
 .report-content :deep(blockquote) {
   margin: 16px 0;
   padding: 12px 14px;
-  border-left: 3px solid #7dd3fc;
-  background: rgba(125, 211, 252, 0.08);
+  border-left: 3px solid var(--color-accent);
+  background: rgba(69, 107, 143, 0.08);
   color: var(--text-secondary);
 }
 
@@ -229,7 +230,7 @@ const report = computed(() => data.value?.report || null)
 
 .report-content :deep(pre) {
   overflow-x: auto;
-  background: #0b1020;
+  background: #2B241C;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 14px;

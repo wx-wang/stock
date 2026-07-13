@@ -219,21 +219,21 @@ onMounted(() => {
 
 /* ── 市场位置卡片 ── */
 .pos-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
-.pos-card { background: var(--bg-card, rgba(18,22,30,0.6)); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 16px; text-align: center; }
+.pos-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; text-align: center; box-shadow: var(--shadow-card); }
 .pos-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
 .pos-value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
-.pos-sub { font-size: 11px; color: #6b7280; margin-top: 4px; }
-.color-up { color: #4CAF50 !important; }
-.color-down { color: #F44336 !important; }
+.pos-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.color-up { color: var(--color-down) !important; }
+.color-down { color: var(--color-up) !important; }
 .pos-zone-card { padding: 16px 12px; }
 .pos-zone-badge { display: inline-block; padding: 4px 16px; border-radius: 20px; font-size: 16px; font-weight: 700; }
-.zone-opportunity .pos-zone-badge { background: rgba(76,175,80,0.15); color: #4CAF50; }
-.zone-neutral .pos-zone-badge { background: rgba(255,193,7,0.15); color: #FFC107; }
-.zone-overvalued .pos-zone-badge { background: rgba(244,67,54,0.15); color: #F44336; }
+.zone-opportunity .pos-zone-badge { background: rgba(45,139,111,0.12); color: var(--color-down); }
+.zone-neutral .pos-zone-badge { background: rgba(184,135,45,0.14); color: var(--color-warning); }
+.zone-overvalued .pos-zone-badge { background: rgba(201,75,61,0.12); color: var(--color-up); }
 .pos-refs { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; }
-.ref-opp { color: #4CAF50; }
-.ref-ovr { color: #F44336; }
-.building-hint { text-align: center; padding: 12px; font-size: 13px; color: #FFB74D; background: rgba(255,183,77,0.06); border: 1px solid rgba(255,183,77,0.15); border-radius: 8px; margin-bottom: 12px; }
+.ref-opp { color: var(--color-down); }
+.ref-ovr { color: var(--color-up); }
+.building-hint { text-align: center; padding: 12px; font-size: 13px; color: var(--color-warning); background: rgba(184,135,45,0.08); border: 1px solid rgba(184,135,45,0.18); border-radius: 8px; margin-bottom: 12px; }
 .loading { padding: 40px; text-align: center; color: var(--text-secondary); font-size: 14px; }
 
 @media (max-width: 768px) { .pos-cards { grid-template-columns: repeat(2, 1fr); } }

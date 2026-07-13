@@ -262,9 +262,9 @@ function crowdingLabel(s: SectorData): string {
 function crowdingStyle(s: SectorData): Record<string, string> {
   const pct = s.crowdingPct ?? 0
   if (pct === 0) return {}
-  if (pct >= 80) return { color: '#E15241', fontWeight: '700' }
+  if (pct >= 80) return { color: '#C94B3D', fontWeight: '700' }
   if (pct >= 60) return { color: '#F0A030', fontWeight: '600' }
-  return { color: '#22AB94' }
+  return { color: '#2D8B6F' }
 }
 
 function getRpsClass(rps?: number) {
@@ -358,12 +358,12 @@ function getReturnClass(ret?: number) {
 
 .sector-table td {
   padding: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(216, 205, 187, 0.45);
   vertical-align: middle;
 }
 
 .sector-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(184, 135, 45, 0.05);
 }
 
 .name-col {
@@ -462,7 +462,7 @@ function getReturnClass(ret?: number) {
 .rps-hot { color: #ef4444; font-weight: 700; }
 .rps-warm { color: #f97316; font-weight: 600; }
 .rps-mid { color: #facc15; }
-.rps-cool { color: #6b7280; }
+.rps-cool { color: #9D917E; }
 .rps-cold { color: #22c55e; }
 
 /* 累计收益样式 */

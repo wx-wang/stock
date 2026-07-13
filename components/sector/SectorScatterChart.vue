@@ -123,9 +123,9 @@ function renderChart() {
       nameGap: 30,
       min: xr.min,
       max: xr.max,
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } },
+      axisLine: { lineStyle: { color: 'rgba(216,205,187,0.75)' } },
       axisLabel: { color: '#888' },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+      splitLine: { lineStyle: { color: 'rgba(216,205,187,0.45)' } },
     },
     yAxis: {
       type: 'value',
@@ -134,19 +134,19 @@ function renderChart() {
       nameGap: 40,
       min: yr.min,
       max: yr.max,
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } },
+      axisLine: { lineStyle: { color: 'rgba(216,205,187,0.75)' } },
       axisLabel: {
         color: '#888',
         formatter: (v: number) => (v * 100).toFixed(0) + '%',
       },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+      splitLine: { lineStyle: { color: 'rgba(216,205,187,0.45)' } },
     },
     series: [
       // 参考线 β=1
       {
         type: 'line',
         data: [[1, yr.min], [1, yr.max]],
-        lineStyle: { color: 'rgba(255,255,255,0.15)', type: 'dashed', width: 1 },
+        lineStyle: { color: 'rgba(216,205,187,0.7)', type: 'dashed', width: 1 },
         symbol: 'none',
         silent: true,
         z: 0,
@@ -155,7 +155,7 @@ function renderChart() {
       {
         type: 'line',
         data: [[xr.min, 0], [xr.max, 0]],
-        lineStyle: { color: 'rgba(255,255,255,0.15)', type: 'dashed', width: 1 },
+        lineStyle: { color: 'rgba(216,205,187,0.7)', type: 'dashed', width: 1 },
         symbol: 'none',
         silent: true,
         z: 0,

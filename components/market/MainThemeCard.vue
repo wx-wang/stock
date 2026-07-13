@@ -57,21 +57,21 @@ defineProps<{ industryTheme: ThemeItem[]; conceptTheme: ThemeItem[] }>()
 .section-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
 .empty { font-size: 12px; color: var(--text-secondary); padding: 20px 0; text-align: center; }
 .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.theme-col { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.theme-col { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; box-shadow: 0 10px 28px var(--color-paper-shadow); }
 .col-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; }
-.theme-card { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.theme-card { padding: 10px 0; border-bottom: 1px solid rgba(216,205,187,0.55); }
 .theme-card:last-child { border-bottom: none; }
 .theme-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .theme-badge.rank { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; font-weight: 800; }
-.theme-badge.r1 { background: rgba(251,191,36,0.2); color: #fbbf24; }
-.theme-badge.r2 { background: rgba(148,163,184,0.2); color: #94a3b8; }
-.theme-badge.r3 { background: rgba(180,83,9,0.2); color: #b45309; }
+.theme-badge.r1 { background: rgba(184,135,45,0.16); color: var(--color-warning); }
+.theme-badge.r2 { background: rgba(69,107,143,0.14); color: var(--color-accent); }
+.theme-badge.r3 { background: rgba(201,75,61,0.12); color: var(--color-up); }
 .theme-name { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; }
-.theme-score { font-size: 13px; font-weight: 700; color: #f59e0b; }
+.theme-score { font-size: 13px; font-weight: 700; color: var(--color-warning); }
 .theme-dims { display: flex; gap: 8px; margin-bottom: 4px; }
-.dim { font-size: 10px; color: #6b7280; background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px; }
-.dim-forum { color: #a78bfa; background: rgba(139,92,246,0.12); }
-.dim-resonance { color: #34d399; background: rgba(52,211,153,0.12); }
+.dim { font-size: 10px; color: var(--text-muted); background: var(--bg-input); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(216,205,187,0.55); }
+.dim-forum { color: var(--color-accent); background: rgba(69,107,143,0.12); }
+.dim-resonance { color: var(--color-down); background: rgba(45,139,111,0.12); }
 .theme-narrative { font-size: 11px; color: var(--text-secondary); }
 
 @media (max-width: 600px) { .theme-grid { grid-template-columns: 1fr; } }

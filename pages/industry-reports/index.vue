@@ -77,7 +77,7 @@ const reports = computed(() => data.value?.reports || [])
 }
 
 .reports-kicker {
-  color: #7dd3fc;
+  color: var(--color-accent);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -148,13 +148,13 @@ const reports = computed(() => data.value?.reports || [])
 
 .report-row:hover {
   color: inherit;
-  border-color: rgba(125, 211, 252, 0.45);
+  border-color: var(--border-light);
   background: var(--bg-card-hover);
   transform: translateY(-1px);
 }
 
 .report-date {
-  color: #7dd3fc;
+  color: var(--color-accent);
   font-size: 12px;
   font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -175,9 +175,9 @@ const reports = computed(() => data.value?.reports || [])
 }
 
 .report-industry {
-  color: #a7f3d0;
-  background: rgba(16, 185, 129, 0.10);
-  border: 1px solid rgba(16, 185, 129, 0.22);
+  color: var(--color-down);
+  background: rgba(45, 139, 111, 0.10);
+  border: 1px solid rgba(45, 139, 111, 0.22);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 11px;

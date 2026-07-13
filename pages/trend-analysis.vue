@@ -148,7 +148,7 @@ const indices = ref<IndexTrend[]>([])
 
 // 温度辅助
 const TEMP_COLORS: Record<string, string> = {
-  '沸': '#D4380D', '热': '#E15241', '温': '#F5C842', '平': '#909399', '凉': '#40A9FF', '寒': '#3370FF',
+  '沸': '#C94B3D', '热': '#D9824A', '温': '#B8872D', '平': '#9D917E', '凉': '#6F8FA3', '寒': '#456B8F',
 }
 const TEMP_BGS: Record<string, string> = {
   '沸': 'rgba(212,56,13,0.12)', '热': 'rgba(225,82,65,0.12)', '温': 'rgba(245,200,66,0.12)',

@@ -44,13 +44,13 @@ async function initChart() {
     chart.setOption({
       tooltip: {
         trigger: 'axis',
-        backgroundColor: 'rgba(14,18,28,0.95)',
-        borderColor: 'rgba(255,255,255,0.08)',
-        textStyle: { color: '#c8d0dc', fontSize: 12 },
+        backgroundColor: '#FFF9EF',
+        borderColor: '#D8CDBB',
+        textStyle: { color: '#2B241C', fontSize: 12 },
       },
       legend: {
         bottom: 0,
-        textStyle: { color: '#8b8fa3', fontSize: 11 },
+        textStyle: { color: '#746958', fontSize: 11 },
         itemWidth: 16, itemHeight: 3,
         data: ['股债利差', '盈利收益率E/P', '10年国债'],
       },
@@ -58,16 +58,16 @@ async function initChart() {
       xAxis: {
         type: 'category',
         data: dates,
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+        axisLine: { lineStyle: { color: 'rgba(216,205,187,0.75)' } },
         axisTick: { show: false },
-        axisLabel: { color: '#6b7280', fontSize: 10, interval: Math.max(1, Math.floor(dates.length / 8)) },
+        axisLabel: { color: '#9D917E', fontSize: 10, interval: Math.max(1, Math.floor(dates.length / 8)) },
       },
       yAxis: {
         type: 'value',
         name: '%',
-        nameTextStyle: { color: '#6b7280', fontSize: 10 },
-        axisLabel: { color: '#6b7280', fontSize: 10 },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
+        nameTextStyle: { color: '#9D917E', fontSize: 10 },
+        axisLabel: { color: '#9D917E', fontSize: 10 },
+        splitLine: { lineStyle: { color: 'rgba(216,205,187,0.5)' } },
       },
       series: [
         {
@@ -76,17 +76,17 @@ async function initChart() {
           data: props.history.map(h => h.spread),
           smooth: true,
           symbol: 'none',
-          lineStyle: { color: '#4CAF50', width: 2 },
+          lineStyle: { color: '#2D8B6F', width: 2 },
           areaStyle: {
             color: new (await import('echarts').then(m => m.graphic || (m as any).default?.graphic)).LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(76,175,80,0.2)' },
-              { offset: 1, color: 'rgba(76,175,80,0.01)' },
+              { offset: 0, color: 'rgba(45,139,111,0.18)' },
+              { offset: 1, color: 'rgba(45,139,111,0.01)' },
             ]),
           },
           markLine: oppLine > 0 ? {
             silent: true, symbol: 'none',
-            lineStyle: { type: 'dashed', color: '#4CAF50', width: 1, opacity: 0.5 },
-            label: { color: '#4CAF50', fontSize: 10 },
+            lineStyle: { type: 'dashed', color: '#2D8B6F', width: 1, opacity: 0.55 },
+            label: { color: '#2D8B6F', fontSize: 10 },
             data: [{ yAxis: oppLine, label: { formatter: `机会区 ${oppLine}%` } }],
           } : undefined,
         },
@@ -96,7 +96,7 @@ async function initChart() {
           data: props.history.map(h => h.ep),
           smooth: true,
           symbol: 'none',
-          lineStyle: { color: '#FF5722', width: 1.5, opacity: 0.85 },
+          lineStyle: { color: '#C94B3D', width: 1.5, opacity: 0.85 },
         },
         {
           name: '10年国债',
@@ -104,7 +104,7 @@ async function initChart() {
           data: props.history.map(h => h.bond10y),
           smooth: true,
           symbol: 'none',
-          lineStyle: { color: '#42A5F5', width: 1.5, opacity: 0.85 },
+          lineStyle: { color: '#456B8F', width: 1.5, opacity: 0.85 },
         },
       ],
     }, true)

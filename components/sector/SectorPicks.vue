@@ -145,13 +145,13 @@ const visiblePicks = computed(() => picks.value.slice(0, 6))
 function barColor(p: SectorPick): string {
   if (p.totalScore >= 0.7) return '#22c55e'
   if (p.totalScore >= 0.5) return '#06b6d4'
-  return '#3370FF'
+  return '#456B8F'
 }
 
 function scoreColor(s: number): string {
   if (s >= 0.7) return '#22c55e'
   if (s >= 0.5) return '#06b6d4'
-  return '#3370FF'
+  return '#456B8F'
 }
 
 function fmtCode(code: string): string {

@@ -71,6 +71,7 @@ const report = computed(() => data.value?.report || null)
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
 
 .daily-shell.state {
@@ -91,15 +92,15 @@ const report = computed(() => data.value?.report || null)
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: #fbbf24;
+  color: var(--color-warning);
   font-size: 12px;
   font-weight: 700;
   margin-bottom: 12px;
 }
 
 .daily-meta-top span {
-  border: 1px solid rgba(251, 191, 36, 0.20);
-  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(184, 135, 45, 0.20);
+  background: rgba(184, 135, 45, 0.08);
   border-radius: 999px;
   padding: 3px 9px;
 }
@@ -126,9 +127,9 @@ const report = computed(() => data.value?.report || null)
 }
 
 .daily-tags span {
-  color: #fde68a;
-  background: rgba(251, 191, 36, 0.10);
-  border: 1px solid rgba(251, 191, 36, 0.20);
+  color: var(--color-warning);
+  background: rgba(184, 135, 45, 0.10);
+  border: 1px solid rgba(184, 135, 45, 0.20);
   border-radius: 999px;
   padding: 3px 9px;
   font-size: 12px;
@@ -178,8 +179,8 @@ const report = computed(() => data.value?.report || null)
 .daily-content :deep(blockquote) {
   margin: 16px 0;
   padding: 12px 14px;
-  border-left: 3px solid #fbbf24;
-  background: rgba(251, 191, 36, 0.08);
+  border-left: 3px solid var(--color-warning);
+  background: rgba(184, 135, 45, 0.08);
   color: var(--text-secondary);
 }
 
@@ -229,7 +230,7 @@ const report = computed(() => data.value?.report || null)
 
 .daily-content :deep(pre) {
   overflow-x: auto;
-  background: #0b1020;
+  background: #2B241C;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 14px;
